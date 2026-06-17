@@ -10,7 +10,7 @@ const LANG_LABELS = {
 export function mainMenuKeyboard(lang) {
   const labels = LANG_LABELS[lang] || LANG_LABELS.en;
   const catRows = CATEGORIES.map(cat => [
-    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}` }
+    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}`, style: 'primary' }
   ]);
   return {
     inline_keyboard: [
@@ -25,7 +25,7 @@ export function mainMenuKeyboard(lang) {
 
 export function categoriesKeyboard(lang) {
   const rows = CATEGORIES.map(cat => [
-    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}` }
+    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}`, style: 'primary' }
   ]);
   rows.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
@@ -42,7 +42,7 @@ export function presetsKeyboard(categoryId, lang) {
   ]);
 
   rows.push([
-    { text: '✨ ' + (lang === 'fa' ? 'ساخت پرامپت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Build Your Prompt'), callback_data: `cat_${categoryId}_custom` }
+    { text: '✨ ' + (lang === 'fa' ? 'ساخت پرامپت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Build Your Prompt'), callback_data: `cat_${categoryId}_custom`, style: 'success' }
   ]);
   rows.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
@@ -71,7 +71,7 @@ export function resultKeyboard(categoryId, lang) {
   return {
     inline_keyboard: [
       [
-        { text: getMsg(lang, 'copy_btn'), callback_data: 'copy' }
+        { text: getMsg(lang, 'copy_btn'), callback_data: 'copy', style: 'danger' }
       ],
       [
         { text: getMsg(lang, 'new_prompt'), callback_data: `menu_presets_${categoryId}` },
