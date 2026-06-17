@@ -1,0 +1,14 @@
+{
+  "name": "lira-prompt-bot",
+  "version": "1.0.0",
+  "description": "Lira - Telegram Prompt Master Bot on Cloudflare Workers",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "setup": "node setup-webhook.js"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
