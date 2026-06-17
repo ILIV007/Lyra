@@ -1,26 +1,14 @@
 const FALLBACK_MODELS = [
   'meta-llama/llama-3.1-8b-instruct:free',
-  'google/gemma-2-9b-it:free',
-  'mistralai/mistral-7b-instruct-v0.3:free',
-  'qwen/qwen-2.5-7b-instruct:free'
+  'google/gemma-2-9b-it:free'
 ];
 
-const REQUEST_TIMEOUT = 60000;
-
-function dedupeModels(models) {
-  const seen = new Set();
-  return models.filter(m => {
-    if (seen.has(m)) return false;
-    seen.add(m);
-    return true;
-  });
-}
+const REQUEST_TIMEOUT = 15000;
 
 function buildModels(env) {
-  return dedupeModels([
-    env.OPENROUTER_MODEL || FALLBACK_MODELS[0],
-    ...FALLBACK_MODELS
-  ]);
+  const primary = env.OPENROUTER_MODEL || FALLBACK_MODELS[0];
+  if (primary === FALLBACK_MODELS[0]) return FALLBACK_MODELS;
+  return [primary, FALLBACK_MODELS[0]];
 }
 
 async function apiFetch(model, messages, env, signal) {

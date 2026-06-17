@@ -55,7 +55,9 @@ export async function sendMessageDraft(chatId, text, options = {}, env) {
       ...options
     })
   });
-  return res.json();
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.description || 'sendMessageDraft failed');
+  return data;
 }
 
 export async function sendChatAction(chatId, action, env) {

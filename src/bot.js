@@ -246,42 +246,21 @@ export default {
 
   async processPrompt(chatId, userText, systemPrompt, isCustom, categoryId, presetId, env) {
     const lang = await getUserLang(chatId, env);
+    let statusMsg;
 
     try {
       await sendChatAction(chatId, 'typing', env);
+      statusMsg = await sendMessage(chatId, `_${getMsg(lang, 'generating')}_`, {}, env);
 
-      let draftMsg;
-      try {
-        draftMsg = await sendMessageDraft(chatId, `> ${userText}\n\n_${getMsg(lang, 'generating')}_`, {}, env);
-      } catch {
-        draftMsg = await sendMessage(chatId, `> ${userText}\n\n_${getMsg(lang, 'generating')}_`, {}, env);
-      }
+      const aiResponse = await enhanceWithAI(userText, systemPrompt, env);
 
-      const draftId = draftMsg?.result?.message_id;
-      let lastUpdate = 0;
-
-      const fullText = await streamAI(userText, systemPrompt, env, (accumulated) => {
-        const now = Date.now();
-        if (now - lastUpdate < STREAM_UPDATE_MS) return;
-        lastUpdate = now;
-        const partial = '`> ' + userText + '`\n\n```\n' + accumulated.replace(/```/g, '`\u200b``') + '\n```';
-        if (draftId) {
-          editMessageText(chatId, draftId, partial, {}, env).catch(() => {});
-        }
-      });
-
-      const { prompt, followup } = parseAIResponse(fullText);
+      const { prompt, followup } = parseAIResponse(aiResponse);
       const finalText = '`> ' + userText + '`\n\n```\n' + prompt + '\n```' + BOT_FOOTER;
 
-      if (draftId) {
-        await editMessageText(chatId, draftId, finalText, {
-          reply_markup: resultKeyboard(categoryId, lang)
-        }, env);
-      } else {
-        await sendMessage(chatId, finalText, {
-          reply_markup: resultKeyboard(categoryId, lang)
-        }, env);
-      }
+      await this.deleteMessage(chatId, statusMsg?.result?.message_id, env);
+      await sendMessage(chatId, finalText, {
+        reply_markup: resultKeyboard(categoryId, lang)
+      }, env);
 
       if (followup) {
         await setUserState(chatId, { step: 'awaiting_followup', systemPrompt, originalText: userText, categoryId }, env);
@@ -293,6 +272,7 @@ export default {
       }
     } catch (err) {
       console.error('Process prompt error:', err);
+      await this.deleteMessage(chatId, statusMsg?.result?.message_id, env);
       await sendMessage(chatId, addFooter(getMsg(lang, 'api_error')), {
         reply_markup: backToPresetsKeyboard(categoryId, lang)
       }, env);
