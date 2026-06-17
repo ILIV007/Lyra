@@ -8,3 +8,4 @@ BOT_LANGUAGE = "en"
 
 [[kv_namespaces]]
 binding = "LYRA_STATE"
+id = "b4ceacd642044b20859fadfd4e663b2b"
