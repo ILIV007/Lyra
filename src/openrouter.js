@@ -11,6 +11,7 @@ function getModels(env) {
 }
 
 export async function enhanceWithAI(userText, systemPrompt, env) {
+  if (!env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY not set in environment');
   const models = getModels(env);
   let lastError = '';
 

@@ -1,13 +1,18 @@
 const BASE = (token) => `https://api.telegram.org/bot${token}`;
 
+function assertToken(env) {
+  if (!env.TELEGRAM_TOKEN) throw new Error('TELEGRAM_TOKEN not set in environment');
+}
+
 async function apiCall(method, body, env) {
+  assertToken(env);
   const res = await fetch(`${BASE(env.TELEGRAM_TOKEN)}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   const data = await res.json();
-  if (!data.ok) throw new Error(data.description || `${method} failed`);
+  if (!data.ok) throw new Error(`${method}: ${data.description || 'unknown error'} (code: ${data.error_code || 'unknown'})`);
   return data;
 }
 

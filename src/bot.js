@@ -72,16 +72,25 @@ function parseAI(r) {
 export default {
   async handleUpdate(update, env) {
     try {
+      if (!update || (!update.message && !update.callback_query)) {
+        console.warn('Invalid update structure:', JSON.stringify(update));
+        return;
+      }
       if (update.message) await this.handleMessage(update.message, env);
       else if (update.callback_query) await this.handleCallback(update.callback_query, env);
     } catch (err) {
       console.error('Update error:', err);
       try {
         const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
-        if (!chatId) return;
+        if (!chatId) {
+          console.error('Could not extract chatId from update');
+          return;
+        }
         const lang = await getUserLang(chatId, env);
         await sendMessage(chatId, footer(getMsg(lang, 'error')), { reply_markup: mainMenuKeyboard(lang) }, env);
-      } catch {}
+      } catch (e) {
+        console.error('Failed to send error message:', e);
+      }
     }
   },
 
