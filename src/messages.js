@@ -62,6 +62,8 @@ Send me your text and I'll optimize it into a professional prompt.`,
     new_prompt: '✨ New Prompt',
     copy: '📋 Copied!',
     copy_btn: '📋 Copy',
+    generating: 'Generating your prompt...',
+
     answer_followup: 'Send your answer to refine the prompt.',
 
     category_display: {
@@ -130,6 +132,8 @@ Send me your text and I'll optimize it into a professional prompt.`,
     new_prompt: '✨ پرامپت جدید',
     copy: '📋 کپی شد!',
     copy_btn: '📋 کپی',
+    generating: 'در حال تولید پرامپت...',
+
     answer_followup: 'پاسخت رو بفرست تا پرامپت کامل‌تر بشه.',
 
     category_display: {
@@ -198,6 +202,8 @@ Send me your text and I'll optimize it into a professional prompt.`,
     new_prompt: '✨ Новый промпт',
     copy: '📋 Скопировано!',
     copy_btn: '📋 Копировать',
+    generating: 'Генерирую ваш промпт...',
+
     answer_followup: 'Отправьте ответ, чтобы уточнить промпт.',
 
     category_display: {

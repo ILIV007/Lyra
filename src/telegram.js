@@ -44,6 +44,28 @@ export async function answerCallbackQuery(callbackQueryId, text = null, options 
   return res.json();
 }
 
+export async function sendMessageDraft(chatId, text, options = {}, env) {
+  const res = await fetch(`${BASE(env.TELEGRAM_TOKEN)}/sendMessageDraft`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'Markdown',
+      ...options
+    })
+  });
+  return res.json();
+}
+
+export async function sendChatAction(chatId, action, env) {
+  await fetch(`${BASE(env.TELEGRAM_TOKEN)}/sendChatAction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, action })
+  }).catch(() => {});
+}
+
 export async function deleteMessage(chatId, messageId, env) {
   const res = await fetch(`${BASE(env.TELEGRAM_TOKEN)}/deleteMessage`, {
     method: 'POST',

@@ -1,7 +1,7 @@
 import { CATEGORY_MAP, getPresetTitle } from './templates.js';
 import { getMsg } from './messages.js';
-import { sendMessage, editMessageText, answerCallbackQuery } from './telegram.js';
-import { enhanceWithAI } from './openrouter.js';
+import { sendMessage, editMessageText, answerCallbackQuery, sendMessageDraft, sendChatAction } from './telegram.js';
+import { enhanceWithAI, streamAI } from './openrouter.js';
 import {
   mainMenuKeyboard,
   categoriesKeyboard,
@@ -12,11 +12,11 @@ import {
   languageKeyboard
 } from './keyboards.js';
 
-const BOT_FOOTER = '\n\n—\n`@Lyra_IVbot`';
+const BOT_FOOTER = '\n\n—\n> @Lyra_IVbot';
 const stateCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE = 500;
-const PROCESSING_STEPS = ['🔍 Analyzing...', '⚡ Optimizing...', '✨ Building prompt...', '✅ Done!'];
+const STREAM_UPDATE_MS = 400;
 
 function cleanCache() {
   if (stateCache.size > MAX_CACHE) {
@@ -196,6 +196,18 @@ export default {
       return;
     }
 
+    if (data.endsWith('_custom')) {
+      const categoryId = data.split('_')[1];
+      const cat = CATEGORY_MAP[categoryId];
+      if (!cat) return;
+
+      await setUserState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, isCustom: true, categoryId }, env);
+      await editMessageText(chatId, messageId, addFooter(getMsg(lang, 'send_text_prompt', cat.name_en)), {
+        reply_markup: backToPresetsKeyboard(categoryId, lang)
+      }, env);
+      return;
+    }
+
     if (data.startsWith('cat_')) {
       const categoryId = data.split('_')[1];
       await setUserState(chatId, { step: null }, env);
@@ -222,18 +234,6 @@ export default {
       return;
     }
 
-    if (data.endsWith('_custom')) {
-      const categoryId = data.split('_')[1];
-      const cat = CATEGORY_MAP[categoryId];
-      if (!cat) return;
-
-      await setUserState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, isCustom: true, categoryId }, env);
-      await editMessageText(chatId, messageId, addFooter(getMsg(lang, 'send_text_prompt', cat.name_en)), {
-        reply_markup: backToPresetsKeyboard(categoryId, lang)
-      }, env);
-      return;
-    }
-
     if (data.startsWith('lang_')) {
       const newLang = data.replace('lang_', '');
       await setUserState(chatId, { lang: newLang }, env);
@@ -246,23 +246,42 @@ export default {
 
   async processPrompt(chatId, userText, systemPrompt, isCustom, categoryId, presetId, env) {
     const lang = await getUserLang(chatId, env);
-    const statusMsg = await sendMessage(chatId, PROCESSING_STEPS[0], {}, env);
 
     try {
-      await editMessageText(chatId, statusMsg.result.message_id, PROCESSING_STEPS[1], {}, env).catch(() => {});
+      await sendChatAction(chatId, 'typing', env);
 
-      const aiResponse = await enhanceWithAI(userText, systemPrompt, env);
+      let draftMsg;
+      try {
+        draftMsg = await sendMessageDraft(chatId, `> ${userText}\n\n_${getMsg(lang, 'generating')}_`, {}, env);
+      } catch {
+        draftMsg = await sendMessage(chatId, `> ${userText}\n\n_${getMsg(lang, 'generating')}_`, {}, env);
+      }
 
-      await editMessageText(chatId, statusMsg.result.message_id, PROCESSING_STEPS[3], {}, env).catch(() => {});
+      const draftId = draftMsg?.result?.message_id;
+      let lastUpdate = 0;
 
-      const { prompt, followup } = parseAIResponse(aiResponse);
-      const responseText = prompt + BOT_FOOTER;
+      const fullText = await streamAI(userText, systemPrompt, env, (accumulated) => {
+        const now = Date.now();
+        if (now - lastUpdate < STREAM_UPDATE_MS) return;
+        lastUpdate = now;
+        const partial = '`> ' + userText + '`\n\n```\n' + accumulated.replace(/```/g, '`\u200b``') + '\n```';
+        if (draftId) {
+          editMessageText(chatId, draftId, partial, {}, env).catch(() => {});
+        }
+      });
 
-      await sendMessage(chatId, responseText, {
-        reply_markup: resultKeyboard(categoryId, lang)
-      }, env);
+      const { prompt, followup } = parseAIResponse(fullText);
+      const finalText = '`> ' + userText + '`\n\n```\n' + prompt + '\n```' + BOT_FOOTER;
 
-      await this.deleteMessage(chatId, statusMsg.result.message_id, env);
+      if (draftId) {
+        await editMessageText(chatId, draftId, finalText, {
+          reply_markup: resultKeyboard(categoryId, lang)
+        }, env);
+      } else {
+        await sendMessage(chatId, finalText, {
+          reply_markup: resultKeyboard(categoryId, lang)
+        }, env);
+      }
 
       if (followup) {
         await setUserState(chatId, { step: 'awaiting_followup', systemPrompt, originalText: userText, categoryId }, env);
@@ -274,7 +293,6 @@ export default {
       }
     } catch (err) {
       console.error('Process prompt error:', err);
-      await this.deleteMessage(chatId, statusMsg?.result?.message_id, env);
       await sendMessage(chatId, addFooter(getMsg(lang, 'api_error')), {
         reply_markup: backToPresetsKeyboard(categoryId, lang)
       }, env);
@@ -284,7 +302,7 @@ export default {
   async processFollowup(chatId, followupText, systemPrompt, originalText, env) {
     const lang = await getUserLang(chatId, env);
     const categoryId = (await getState(chatId, env))?.categoryId || 'code';
-    const statusMsg = await sendMessage(chatId, PROCESSING_STEPS[2], {}, env);
+    const statusMsg = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
 
     try {
       const refinedPrompt = `${originalText}\n\nAdditional context: ${followupText}`;
@@ -292,10 +310,9 @@ export default {
 
       const aiResponse = await enhanceWithAI(refinedPrompt, noFollowupPrompt, env);
 
-      await editMessageText(chatId, statusMsg.result.message_id, PROCESSING_STEPS[3], {}, env).catch(() => {});
-
       const cleanPrompt = aiResponse.replace(/<\/?PROMPT>/g, '').replace(/<\/?FOLLOWUP>[\s\S]*?<\/?FOLLOWUP>/g, '').trim();
-      const responseText = cleanPrompt + BOT_FOOTER;
+      const combinedDisplay = originalText + '\n' + followupText;
+      const responseText = '`> ' + combinedDisplay + '`\n\n```\n' + cleanPrompt + '\n```' + BOT_FOOTER;
 
       await sendMessage(chatId, responseText, {
         reply_markup: resultKeyboard(categoryId, lang)

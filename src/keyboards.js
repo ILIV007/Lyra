@@ -2,18 +2,19 @@ import { CATEGORIES, getPresetTitle } from './templates.js';
 import { getMsg } from './messages.js';
 
 const LANG_LABELS = {
-  fa: { main: '📝 تبدیل متن به پرامپت', help: '❓ راهنما', lang: '🌐 زبان' },
-  en: { main: '📝 Text to Prompt', help: '❓ Help', lang: '🌐 Language' },
-  ru: { main: '📝 Текст в промпт', help: '❓ Помощь', lang: '🌐 Язык' }
+  fa: { help: '❓ راهنما', lang: '🌐 زبان' },
+  en: { help: '❓ Help', lang: '🌐 Language' },
+  ru: { help: '❓ Помощь', lang: '🌐 Язык' }
 };
 
 export function mainMenuKeyboard(lang) {
   const labels = LANG_LABELS[lang] || LANG_LABELS.en;
+  const catRows = CATEGORIES.map(cat => [
+    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}`, style: 'primary' }
+  ]);
   return {
     inline_keyboard: [
-      [
-        { text: labels.main, callback_data: 'menu_categories' }
-      ],
+      ...catRows,
       [
         { text: labels.help, callback_data: 'menu_help' },
         { text: labels.lang, callback_data: 'menu_language' }
@@ -24,7 +25,7 @@ export function mainMenuKeyboard(lang) {
 
 export function categoriesKeyboard(lang) {
   const rows = CATEGORIES.map(cat => [
-    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}` }
+    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}`, style: 'primary' }
   ]);
   rows.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
@@ -41,10 +42,10 @@ export function presetsKeyboard(categoryId, lang) {
   ]);
 
   rows.push([
-    { text: '✨ ' + (lang === 'fa' ? 'ساخت پرامپت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Build Your Prompt'), callback_data: `cat_${categoryId}_custom` }
+    { text: '✨ ' + (lang === 'fa' ? 'ساخت پرامپت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Build Your Prompt'), callback_data: `cat_${categoryId}_custom`, style: 'success' }
   ]);
   rows.push([
-    { text: getMsg(lang, 'back'), callback_data: 'menu_categories' }
+    { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
   ]);
 
   return { inline_keyboard: rows };
@@ -70,7 +71,7 @@ export function resultKeyboard(categoryId, lang) {
   return {
     inline_keyboard: [
       [
-        { text: getMsg(lang, 'copy_btn'), callback_data: 'copy' }
+        { text: getMsg(lang, 'copy_btn'), callback_data: 'copy', style: 'danger' }
       ],
       [
         { text: getMsg(lang, 'new_prompt'), callback_data: `menu_presets_${categoryId}` },
