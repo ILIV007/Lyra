@@ -1,36 +1,29 @@
-import { CATEGORIES, getPresetTitle } from './templates.js';
+import { CATEGORIES } from './templates.js';
 import { getMsg } from './messages.js';
 
-const LANG_LABELS = {
-  fa: { help: '❓ راهنما', lang: '🌐 زبان' },
-  en: { help: '❓ Help', lang: '🌐 Language' },
-  ru: { help: '❓ Помощь', lang: '🌐 Язык' }
-};
-
 export function mainMenuKeyboard(lang) {
-  const labels = LANG_LABELS[lang] || LANG_LABELS.en;
-  const catRows = CATEGORIES.map(cat => [
-    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}`, style: 'primary' }
+  const cats = CATEGORIES.map(cat => [
+    { text: `${cat.emoji} ${getMsg(lang, 'category_display', cat.id) || cat.name_en}`, callback_data: `cat_${cat.id}` }
   ]);
   return {
     inline_keyboard: [
-      ...catRows,
+      ...cats,
       [
-        { text: labels.help, callback_data: 'menu_help' },
-        { text: labels.lang, callback_data: 'menu_language' }
+        { text: '❓ Help', callback_data: 'menu_help' },
+        { text: '🌐 Language', callback_data: 'menu_language' }
       ]
     ]
   };
 }
 
 export function categoriesKeyboard(lang) {
-  const rows = CATEGORIES.map(cat => [
-    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}`, style: 'primary' }
+  const cats = CATEGORIES.map(cat => [
+    { text: `${cat.emoji} ${getMsg(lang, 'category_display', cat.id) || cat.name_en}`, callback_data: `cat_${cat.id}` }
   ]);
-  rows.push([
+  cats.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
   ]);
-  return { inline_keyboard: rows };
+  return { inline_keyboard: cats };
 }
 
 export function presetsKeyboard(categoryId, lang) {
@@ -42,7 +35,7 @@ export function presetsKeyboard(categoryId, lang) {
   ]);
 
   rows.push([
-    { text: '✨ ' + (lang === 'fa' ? 'ساخت پرامپت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Build Your Prompt'), callback_data: `cat_${categoryId}_custom`, style: 'success' }
+    { text: `✨ ${lang === 'fa' ? 'ساخت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Custom Prompt'}`, callback_data: `cat_${categoryId}_custom` }
   ]);
   rows.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
@@ -67,15 +60,16 @@ export function backToMainKeyboard(lang) {
   };
 }
 
-export function resultKeyboard(categoryId, lang) {
+export function resultKeyboard(promptText, lang) {
+  const maxCopyLen = 256;
+  const copyText = promptText.length > maxCopyLen ? promptText.slice(0, maxCopyLen) : promptText;
   return {
     inline_keyboard: [
       [
-        { text: getMsg(lang, 'copy_btn'), callback_data: 'copy', style: 'danger' }
+        { text: `📋 ${getMsg(lang, 'copy_btn')}`, copy_text: { text: copyText } }
       ],
       [
-        { text: getMsg(lang, 'new_prompt'), callback_data: `menu_presets_${categoryId}` },
-        { text: getMsg(lang, 'main_menu'), callback_data: 'menu_main' }
+        { text: `✨ ${getMsg(lang, 'new_prompt')}`, callback_data: 'menu_main' }
       ]
     ]
   };
@@ -93,5 +87,22 @@ export function languageKeyboard() {
         { text: '🔙 Back', callback_data: 'menu_main' }
       ]
     ]
+  };
+}
+
+export function replyKeyboard(lang) {
+  return {
+    keyboard: [
+      [
+        { text: `✨ ${getMsg(lang, 'reply_freeform')}` },
+        { text: `💻 ${getMsg(lang, 'reply_code')}` }
+      ],
+      [
+        { text: `🖼️ ${getMsg(lang, 'reply_image')}` },
+        { text: `🎬 ${getMsg(lang, 'reply_video')}` }
+      ]
+    ],
+    resize_keyboard: true,
+    is_persistent: true
   };
 }

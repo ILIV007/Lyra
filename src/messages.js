@@ -1,227 +1,257 @@
 export const MESSAGES = {
   en: {
-    start: `Hello! I'm **Lyra** 🤖
-**Prompt Optimizer** — I transform your simple text into professional, optimized prompts!
+    start: `Hello! I'm Lyra — Prompt Optimizer.
 
-Choose a category from the menu below:`,
+I transform your simple text into professional, optimized prompts.
 
-    start_with_name: (name) => `Hello ${name}! I'm **Lyra** 🤖
-**Prompt Optimizer** — I transform your simple text into professional, optimized prompts!
+Just send me any text and I'll create a complete prompt for you!`,
 
-Choose a category from the menu below:`,
+    start_with_name: (name) => `Hello ${name}! I'm Lyra — Prompt Optimizer.
 
-    choose_category: '📂 Select a prompt category:',
+I transform your simple text into professional, optimized prompts.
+
+Just send me any text and I'll create a complete prompt for you!`,
+
+    choose_category: 'Select a prompt category:',
 
     send_text_prompt: (category) => `Category: ${category}
 
-📝 Send me your idea or text and I'll create a complete, optimized prompt.
+Send me your idea or text and I'll create a complete, optimized prompt.
 Examples:
-- "A Python function to sort arrays"
-- "Image of a cat in space, cyberpunk style"
-- "Video introducing Apple's new product"`,
+• A Python function to sort arrays
+• Image of a cat in space, cyberpunk style
+• Video introducing Apple's new product`,
 
-    processing: '⏳ Analyzing and optimizing your prompt... Please wait',
+    processing: 'Generating your prompt...',
 
-    result: '✨ **Optimized Prompt:**\n\n',
+    followup_hint: 'Want to refine this prompt? Just send more details or click below.',
 
-    followup_questions: '🤔 For a more complete prompt, please answer these (optional):\n\n',
+    no_category: 'Please select a category from the menu first.',
 
-    no_category: '⚠️ Please select a category from the main menu first.\n\n/start - Back to menu',
+    error: 'An error occurred. Please try again.',
 
-    error: '❌ An error occurred. Please try again.',
+    api_error: 'AI server error. Please try later.',
 
-    api_error: '❌ AI server error. Please try later.',
+    help: `Lyra — Prompt Optimizer Guide
 
-    help: `**Lyra — Prompt Optimizer Guide** 🤖
+1. Send any text and I'll optimize it
+2. Or select a category for specialized prompts
+3. Follow-up questions refine your prompt further
 
-1. Select a category (Code, Image, Video)
-2. Send your simple text
-3. Lyra creates a professional prompt
-4. Follow-up questions may be asked
+Categories:
+• Code — Programming, debugging, review
+• Image — Generation, editing, style transfer
+• Video — Scripts, generation, post-production
 
-**Categories:**
-💻 Code | 🖼️ Image | 🎬 Video
-
-**Commands:**
+Commands:
 /start — Restart
 /help — Guide
 /language — Change language`,
 
-    language_changed: '🌐 Language changed.',
-    language_prompt: '🌐 Select your language:',
+    language_changed: 'Language changed.',
+    language_prompt: 'Select your language:',
 
     choose_preset: 'Select a preset:',
-    custom_prompt_title: '✨ Build Your Prompt',
-    preset_prompt: (title) => `⚡ **${title}**
+    custom_prompt_title: 'Build Your Prompt',
+    preset_prompt: (title) => `${title} — ready.
 
 Send me your text and I'll optimize it into a professional prompt.`,
 
-    back: '🔙 Back',
-    cancel: '❌ Cancel',
-    main_menu: '🔝 Main Menu',
-    new_prompt: '✨ New Prompt',
-    copy: '📋 Copied!',
-    copy_btn: '📋 Copy',
-    generating: 'Generating your prompt...',
-
+    back: 'Back',
+    cancel: 'Cancel',
+    main_menu: 'Main Menu',
+    new_prompt: 'New Prompt',
+    copy: 'Copied!',
+    copy_btn: 'Copy',
+    generating: 'Generating...',
     answer_followup: 'Send your answer to refine the prompt.',
 
-    select_category_first: '📂 Please select a category from the menu first, then send your text.',
+    result_label_input: 'Your Input:',
+    result_label_prompt: 'Optimized Prompt:',
+    result_label_followup: 'Questions to refine:',
+    result_footer: '@Lyra_IVbot',
 
     category_display: {
-      code: '💻 Code',
-      image: '🖼️ Image',
-      video: '🎬 Video'
-    }
+      code: 'Code',
+      image: 'Image',
+      video: 'Video'
+    },
+
+    reply_freeform: 'Send any text',
+    reply_code: 'Code',
+    reply_image: 'Image',
+    reply_video: 'Video',
+    reply_history: 'History',
+    reply_settings: 'Settings'
   },
 
   fa: {
-    start: `سلام! من **لیرا** هستم 🤖
-**بهینه‌ساز پرامپت** — متن ساده‌ات رو به پرامپت حرفه‌ای و بهینه تبدیل می‌کنم!
+    start: `سلام! من لیرا هستم — بهینه‌ساز پرامپت.
 
-از منوی زیر یک دسته‌بندی انتخاب کن:`,
+متن ساده‌ات رو به پرامپت حرفه‌ای و بهینه تبدیل می‌کنم.
 
-    start_with_name: (name) => `سلام ${name} جان! من **لیرا** هستم 🤖
-**بهینه‌ساز پرامپت** — متن ساده‌ات رو به پرامپت حرفه‌ای و بهینه تبدیل می‌کنم!
+هر متنی برام بفرست تا برات پرامپت کامل بسازم!`,
 
-از منوی زیر یک دسته‌بندی انتخاب کن:`,
+    start_with_name: (name) => `سلام ${name} جان! من لیرا هستم — بهینه‌ساز پرامپت.
 
-    choose_category: '📂 دسته‌بندی پرامپت رو انتخاب کن:',
+متن ساده‌ات رو به پرامپت حرفه‌ای و بهینه تبدیل می‌کنم.
+
+هر متنی برام بفرست تا برات پرامپت کامل بسازم!`,
+
+    choose_category: 'دسته‌بندی پرامپت رو انتخاب کن:',
 
     send_text_prompt: (category) => `دسته: ${category}
 
-📝 متن یا ایده‌ات رو بفرست تا برات پرامپت کامل و بهینه بسازم.`,
+متن یا ایده‌ات رو بفرست تا برات پرامپت کامل و بهینه بسازم.`,
 
-    processing: '⏳ دارم پرامپتت رو تحلیل و بهینه‌سازی می‌کنم... لطفاً صبر کن',
+    processing: 'در حال تولید پرامپت...',
 
-    result: '✨ **پرامپت بهینه‌شده:**\n\n',
+    followup_hint: 'میخوای پرامپت رو بهتر کنی؟ جزئیات بیشتری بفرست یا دکمه زیر رو بزن.',
 
-    followup_questions: '🤔 برای پرامپت کامل‌تر، لطف به این سوالات هم پاسخ بده (اختیاری):\n\n',
+    no_category: 'لطفاً اول از منوی اصلی یک دسته‌بندی انتخاب کن.',
 
-    no_category: '⚠️ لطفاً اول از منوی اصلی یک دسته‌بندی انتخاب کن.\n\n/start - برگشت به منو',
+    error: 'خطایی رخ داد. لطفاً دوباره تلاش کن.',
 
-    error: '❌ خطایی رخ داد. لطفاً دوباره تلاش کن.',
+    api_error: 'خطا در ارتباط با سرور هوش مصنوعی. بعداً تلاش کن.',
 
-    api_error: '❌ خطا در ارتباط با سرور هوش مصنوعی. بعداً تلاش کن.',
+    help: `لیرا — راهنمای بهینه‌ساز پرامپت
 
-    help: `**راهنمای لیرا — بهینه‌ساز پرامپت** 🤖
+۱. هر متنی بفرست تا بهینه‌اش کنم
+۲. یا یک دسته‌بندی برای پرامپت تخصصی انتخاب کن
+۳. سوالات تکمیلی برای بهتر شدن پرامپت
 
-۱. از منو یه دسته‌بندی انتخاب کن (کد، عکس، ویدیو)
-۲. متن ساده‌ات رو بفرست
-۳. لیرا برات پرامپت حرفه‌ای میسازه
-۴. در صورت نیاز سوالات تکمیلی پرسیده میشه
+دسته‌ها:
+• کد — برنامه‌نویسی، دیباگ، بررسی
+• عکس — تولید، ویرایش، انتقال سبک
+• ویدیو — اسکریپت، تولید، پست‌پروداکشن
 
-**دسته‌ها:**
-💻 کد | 🖼️ عکس | 🎬 ویدیو
-
-**دستورات:**
+دستورات:
 /start — شروع مجدد
 /help — راهنما
 /language — تغییر زبان`,
 
-    language_changed: '🌐 زبان تغییر کرد.',
-    language_prompt: '🌐 زبان مورد نظرت رو انتخاب کن:',
+    language_changed: 'زبان تغییر کرد.',
+    language_prompt: 'زبان مورد نظرت رو انتخاب کن:',
 
     choose_preset: 'یک پرامپت آماده انتخاب کن:',
-    custom_prompt_title: '✨ ساخت پرامپت اختصاصی',
-    preset_prompt: (title) => `⚡ **${title}**
+    custom_prompt_title: 'ساخت پرامپت اختصاصی',
+    preset_prompt: (title) => `${title} — آماده.
 
 متن مورد نظرت رو بفرست تا برات پرامپت حرفه‌ای بسازم.`,
 
-    back: '🔙 بازگشت',
-    cancel: '❌ لغو',
-    main_menu: '🔝 منوی اصلی',
-    new_prompt: '✨ پرامپت جدید',
-    copy: '📋 کپی شد!',
-    copy_btn: '📋 کپی',
-    generating: 'در حال تولید پرامپت...',
-
+    back: 'بازگشت',
+    cancel: 'لغو',
+    main_menu: 'منوی اصلی',
+    new_prompt: 'پرامپت جدید',
+    copy: 'کپی شد!',
+    copy_btn: 'کپی',
+    generating: 'در حال تولید...',
     answer_followup: 'پاسخت رو بفرست تا پرامپت کامل‌تر بشه.',
 
-    select_category_first: '📂 لطفاً اول یک دسته‌بندی از منو انتخاب کن، سپس متنت رو بفرست.',
+    result_label_input: 'متن شما:',
+    result_label_prompt: 'پرامپت بهینه‌شده:',
+    result_label_followup: 'سوالات برای بهتر شدن:',
+    result_footer: '@Lyra_IVbot',
 
     category_display: {
-      code: '💻 کد',
-      image: '🖼️ عکس',
-      video: '🎬 ویدیو'
-    }
+      code: 'کد',
+      image: 'عکس',
+      video: 'ویدیو'
+    },
+
+    reply_freeform: 'ارسال متن',
+    reply_code: 'کد',
+    reply_image: 'عکس',
+    reply_video: 'ویدیو',
+    reply_history: 'تاریخچه',
+    reply_settings: 'تنظیمات'
   },
 
   ru: {
-    start: `Привет! Я **Lyra** 🤖
-**Prompt Optimizer** — превращаю ваш простой текст в профессиональные оптимизированные промпты!
+    start: `Привет! Я Lyra — Оптимизатор промптов.
 
-Выберите категорию из меню ниже:`,
+Превращаю ваш простой текст в профессиональные оптимизированные промпты.
 
-    start_with_name: (name) => `Привет, ${name}! Я **Lyra** 🤖
-**Prompt Optimizer** — превращаю ваш простой текст в профессиональные промпты!
+Отправьте любой текст, и я создам готовый промпт!`,
 
-Выберите категорию из меню ниже:`,
+    start_with_name: (name) => `Привет, ${name}! Я Lyra — Оптимизатор промптов.
 
-    choose_category: '📂 Выберите категорию промпта:',
+Превращаю ваш простой текст в профессиональные оптимизированные промпты.
+
+Отправьте любой текст, и я создам готовый промпт!`,
+
+    choose_category: 'Выберите категорию промпта:',
 
     send_text_prompt: (category) => `Категория: ${category}
 
-📝 Отправьте вашу идею или текст, и я создам оптимизированный промпт.`,
+Отправьте вашу идею или текст, и я создам оптимизированный промпт.`,
 
-    processing: '⏳ Анализирую и оптимизирую ваш промпт... Пожалуйста, подождите',
+    processing: 'Генерирую промпт...',
 
-    result: '✨ **Оптимизированный промпт:**\n\n',
+    followup_hint: 'Хотите уточнить промпт? Отправьте ещё информацию или нажмите ниже.',
 
-    followup_questions: '🤔 Для более полного промпта, ответьте на эти вопросы (необязательно):\n\n',
+    no_category: 'Сначала выберите категорию из главного меню.',
 
-    no_category: '⚠️ Сначала выберите категорию из главного меню.\n\n/start - Назад в меню',
+    error: 'Произошла ошибка. Пожалуйста, попробуйте снова.',
 
-    error: '❌ Произошла ошибка. Пожалуйста, попробуйте снова.',
+    api_error: 'Ошибка сервера ИИ. Попробуйте позже.',
 
-    api_error: '❌ Ошибка сервера ИИ. Попробуйте позже.',
+    help: `Lyra — Руководство по оптимизатору промптов
 
-    help: `**Lyra — Prompt Optimizer Guide** 🤖
+1. Отправьте любой текст — я его оптимизирую
+2. Или выберите категорию для специализированных промптов
+3. Уточняющие вопросы помогут сделать промпт лучше
 
-1. Выберите категорию (Code, Image, Video)
-2. Отправьте ваш простой текст
-3. Lyra создаст профессиональный промпт
-4. При необходимости будут заданы уточняющие вопросы
+Категории:
+• Code — Программирование, отладка, ревью
+• Image — Генерация, редактирование, стилизация
+• Video — Скрипты, генерация, пост-продакшн
 
-**Категории:**
-💻 Code | 🖼️ Image | 🎬 Video
-
-**Команды:**
+Команды:
 /start — Начать заново
 /help — Помощь
 /language — Сменить язык`,
 
-    language_changed: '🌐 Язык изменён.',
-    language_prompt: '🌐 Выберите язык:',
+    language_changed: 'Язык изменён.',
+    language_prompt: 'Выберите язык:',
 
     choose_preset: 'Выберите готовый промпт:',
-    custom_prompt_title: '✨ Свой промпт',
-    preset_prompt: (title) => `⚡ **${title}**
+    custom_prompt_title: 'Свой промпт',
+    preset_prompt: (title) => `${title} — готово.
 
 Отправьте ваш текст, и я создам профессиональный промпт.`,
 
-    back: '🔙 Назад',
-    cancel: '❌ Отмена',
-    main_menu: '🔝 Главное меню',
-    new_prompt: '✨ Новый промпт',
-    copy: '📋 Скопировано!',
-    copy_btn: '📋 Копировать',
-    generating: 'Генерирую ваш промпт...',
-
+    back: 'Назад',
+    cancel: 'Отмена',
+    main_menu: 'Главное меню',
+    new_prompt: 'Новый промпт',
+    copy: 'Скопировано!',
+    copy_btn: 'Копировать',
+    generating: 'Генерирую...',
     answer_followup: 'Отправьте ответ, чтобы уточнить промпт.',
 
-    select_category_first: '📂 Пожалуйста, сначала выберите категорию из меню, затем отправьте ваш текст.',
+    result_label_input: 'Ваш текст:',
+    result_label_prompt: 'Оптимизированный промпт:',
+    result_label_followup: 'Вопросы для уточнения:',
+    result_footer: '@Lyra_IVbot',
 
     category_display: {
-      code: '💻 Code',
-      image: '🖼️ Image',
-      video: '🎬 Video'
-    }
+      code: 'Code',
+      image: 'Image',
+      video: 'Video'
+    },
+
+    reply_freeform: 'Отправить текст',
+    reply_code: 'Code',
+    reply_image: 'Image',
+    reply_video: 'Video',
+    reply_history: 'История',
+    reply_settings: 'Настройки'
   }
 };
 
 export function getMsg(lang, key, ...args) {
-  const fallbacks = ['ru', 'en'];
+  const fallbacks = ['en', 'ru'];
   let msg = MESSAGES[lang]?.[key];
   if (msg) return typeof msg === 'function' ? msg(...args) : msg;
   for (const fb of fallbacks) {

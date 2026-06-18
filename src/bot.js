@@ -1,16 +1,18 @@
-import { CATEGORY_MAP } from './templates.js';
+import { CATEGORY_MAP, BASE_4D } from './templates.js';
 import { getMsg } from './messages.js';
-import { sendMessage, editMessageText, answerCallbackQuery, deleteMessage, sendChatAction, escapeMD } from './telegram.js';
+import {
+  buildMessage, B, I, C, PRE, BQ, P,
+  buildPreBlock,
+  sendMessage, editMessageText, answerCallbackQuery,
+  deleteMessage, sendChatAction
+} from './telegram.js';
 import { enhanceWithAI } from './openrouter.js';
 import {
-  mainMenuKeyboard,
-  presetsKeyboard,
-  backToPresetsKeyboard,
-  backToMainKeyboard,
-  languageKeyboard
+  mainMenuKeyboard, presetsKeyboard, backToPresetsKeyboard,
+  backToMainKeyboard, resultKeyboard, languageKeyboard, replyKeyboard
 } from './keyboards.js';
 
-const FOOTER_TEXT = '— @Lyra_IVbot';
+const FOOTER_TEXT = '@Lyra_IVbot';
 const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE = 500;
@@ -55,10 +57,6 @@ async function setState(chatId, data, env) {
   } catch {}
 }
 
-function footer(text) {
-  return text + '\n\n> ' + escapeMD(FOOTER_TEXT);
-}
-
 function parseAI(r) {
   const pm = r.match(/<PROMPT>([\s\S]*?)<\/PROMPT>/);
   const fm = r.match(/<FOLLOWUP>([\s\S]*?)<\/FOLLOWUP>/);
@@ -68,11 +66,32 @@ function parseAI(r) {
   };
 }
 
+function formatResultMessage(userText, prompt, followup, lang) {
+  const segs = [];
+
+  segs.push(B(`${getMsg(lang, 'result_label_input')}\n`));
+  segs.push(I(userText + '\n'));
+  segs.push(P('\n'));
+  segs.push(B(`${getMsg(lang, 'result_label_prompt')}\n`));
+
+  const preBlock = buildPreBlock(prompt);
+  segs.push(preBlock);
+
+  if (followup) {
+    segs.push(P('\n'));
+    segs.push(B(`${getMsg(lang, 'result_label_followup')}\n`));
+    segs.push(I(followup + '\n'));
+  }
+
+  segs.push(P(`\n—\n${FOOTER_TEXT}`));
+  return buildMessage(segs);
+}
+
 export default {
   async handleUpdate(update, env) {
     try {
       if (!update || (!update.message && !update.callback_query)) {
-        console.warn('Invalid update structure:', JSON.stringify(update));
+        console.warn('Invalid update:', JSON.stringify(update).slice(0, 200));
         return;
       }
       if (update.message) await this.handleMessage(update.message, env);
@@ -81,15 +100,10 @@ export default {
       console.error('Update error:', err);
       try {
         const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
-        if (!chatId) {
-          console.error('Could not extract chatId from update');
-          return;
-        }
+        if (!chatId) return;
         const lang = await getUserLang(chatId, env);
-        await sendMessage(chatId, footer(getMsg(lang, 'error')), { reply_markup: mainMenuKeyboard(lang) }, env);
-      } catch (e) {
-        console.error('Failed to send error message:', e);
-      }
+        await sendMessage(chatId, getMsg(lang, 'error'), { reply_markup: mainMenuKeyboard(lang) }, env);
+      } catch {}
     }
   },
 
@@ -99,12 +113,42 @@ export default {
     const lang = await getUserLang(chatId, env);
 
     if (!text) {
-      await sendMessage(chatId, footer(getMsg(lang, 'error')), { reply_markup: mainMenuKeyboard(lang) }, env);
+      await sendMessage(chatId, getMsg(lang, 'error'), { reply_markup: mainMenuKeyboard(lang) }, env);
       return;
     }
 
     if (text.startsWith('/')) {
       await this.handleCommand(chatId, text, msg, env);
+      return;
+    }
+
+    if (text === `✨ ${getMsg(lang, 'reply_freeform')}`) {
+      await sendMessage(chatId, getMsg(lang, 'send_text_prompt', 'Free-Form'), {
+        reply_markup: replyKeyboard(lang)
+      }, env);
+      await setState(chatId, { step: 'awaiting_text', systemPrompt: BASE_4D, categoryId: 'freeform' }, env);
+      return;
+    }
+
+    if (text === `💻 ${getMsg(lang, 'reply_code')}`) {
+      await this.enterCategory(chatId, 'code', lang, env);
+      return;
+    }
+
+    if (text === `🖼️ ${getMsg(lang, 'reply_image')}`) {
+      await this.enterCategory(chatId, 'image', lang, env);
+      return;
+    }
+
+    if (text === `🎬 ${getMsg(lang, 'reply_video')}`) {
+      await this.enterCategory(chatId, 'video', lang, env);
+      return;
+    }
+
+    if (text === `📋 ${getMsg(lang, 'reply_history')}` || text === `⚙️ ${getMsg(lang, 'reply_settings')}`) {
+      await sendMessage(chatId, getMsg(lang, 'error'), {
+        reply_markup: mainMenuKeyboard(lang)
+      }, env);
       return;
     }
 
@@ -116,17 +160,18 @@ export default {
     }
 
     if (state?.step === 'awaiting_followup' && state.systemPrompt) {
-      await this.processFollowup(chatId, text, state.systemPrompt, state.originalText, state.categoryId, env);
+      await this.processFollowup(chatId, text, state.systemPrompt, state.originalText, env);
       return;
     }
 
-    if (state?.systemPrompt) {
-      await this.processPrompt(chatId, text, state.systemPrompt, state.categoryId, env);
-      return;
-    }
+    await this.processPrompt(chatId, text, BASE_4D, 'freeform', env);
+  },
 
-    await sendMessage(chatId, footer(getMsg(lang, 'select_category_first')), {
-      reply_markup: mainMenuKeyboard(lang)
+  async enterCategory(chatId, categoryId, lang, env) {
+    await setState(chatId, { step: 'awaiting_text', systemPrompt: CATEGORY_MAP[categoryId].customSystemPrompt, categoryId }, env);
+    const catName = CATEGORY_MAP[categoryId]?.name_en || categoryId;
+    await sendMessage(chatId, getMsg(lang, 'send_text_prompt', catName), {
+      reply_markup: replyKeyboard(lang)
     }, env);
   },
 
@@ -137,23 +182,23 @@ export default {
     const lowerCmd = cmd.toLowerCase().split(' ')[0].split('@')[0];
     switch (lowerCmd) {
       case '/start':
-        await setState(chatId, { step: null, systemPrompt: null, categoryId: null, originalText: null }, env);
-        await sendMessage(chatId, footer(name ? getMsg(lang, 'start_with_name', escapeMD(name)) : getMsg(lang, 'start')), {
+        await setState(chatId, { step: null }, env);
+        await sendMessage(chatId, name ? getMsg(lang, 'start_with_name', name) : getMsg(lang, 'start'), {
           reply_markup: mainMenuKeyboard(lang)
         }, env);
         break;
       case '/help':
-        await sendMessage(chatId, footer(getMsg(lang, 'help')), {
+        await sendMessage(chatId, getMsg(lang, 'help'), {
           reply_markup: backToMainKeyboard(lang)
         }, env);
         break;
       case '/language':
-        await sendMessage(chatId, footer(getMsg(lang, 'language_prompt')), {
+        await sendMessage(chatId, getMsg(lang, 'language_prompt'), {
           reply_markup: languageKeyboard()
         }, env);
         break;
       default:
-        await sendMessage(chatId, footer(getMsg(lang, 'error')), {
+        await sendMessage(chatId, getMsg(lang, 'error'), {
           reply_markup: mainMenuKeyboard(lang)
         }, env);
     }
@@ -165,25 +210,29 @@ export default {
     const data = cb.data;
     const lang = await getUserLang(chatId, env);
 
+    if (data === 'noop') {
+      return;
+    }
+
     await answerCallbackQuery(cb.id, null, {}, env);
 
     if (data === 'menu_main') {
-      await setState(chatId, { step: null, systemPrompt: null, categoryId: null, originalText: null }, env);
-      await editMessageText(chatId, mid, footer(getMsg(lang, 'start')), {
+      await setState(chatId, { step: null }, env);
+      await editMessageText(chatId, mid, getMsg(lang, 'start'), {
         reply_markup: mainMenuKeyboard(lang)
       }, env);
       return;
     }
 
     if (data === 'menu_help') {
-      await editMessageText(chatId, mid, footer(getMsg(lang, 'help')), {
+      await editMessageText(chatId, mid, getMsg(lang, 'help'), {
         reply_markup: backToMainKeyboard(lang)
       }, env);
       return;
     }
 
     if (data === 'menu_language') {
-      await editMessageText(chatId, mid, footer(getMsg(lang, 'language_prompt')), {
+      await editMessageText(chatId, mid, getMsg(lang, 'language_prompt'), {
         reply_markup: languageKeyboard()
       }, env);
       return;
@@ -191,9 +240,8 @@ export default {
 
     if (data.startsWith('menu_presets_')) {
       const cid = data.replace('menu_presets_', '');
-      const cat = CATEGORY_MAP[cid];
-      await setState(chatId, { step: null, systemPrompt: null, categoryId: null, originalText: null }, env);
-      await editMessageText(chatId, mid, footer(lang === 'fa' ? '📂 **' + cat.name_fa + '** — یک پرامپت آماده انتخاب کن:' : lang === 'ru' ? '📂 **' + cat.name_en + '** — Выберите готовый промпт:' : '📂 **' + cat.name_en + '** — Select a preset or build your own:'), {
+      await setState(chatId, { step: null }, env);
+      await editMessageText(chatId, mid, getMsg(lang, 'choose_preset'), {
         reply_markup: presetsKeyboard(cid, lang)
       }, env);
       return;
@@ -204,7 +252,7 @@ export default {
       const cat = CATEGORY_MAP[cid];
       if (!cat) return;
       await setState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, categoryId: cid }, env);
-      await editMessageText(chatId, mid, footer(getMsg(lang, 'send_text_prompt', cat.name_en)), {
+      await editMessageText(chatId, mid, getMsg(lang, 'send_text_prompt', cat.name_en), {
         reply_markup: backToPresetsKeyboard(cid, lang)
       }, env);
       return;
@@ -213,8 +261,9 @@ export default {
     if (data.startsWith('cat_')) {
       const cid = data.split('_')[1];
       const cat = CATEGORY_MAP[cid];
-      await setState(chatId, { step: null, systemPrompt: null, categoryId: null, originalText: null }, env);
-      await editMessageText(chatId, mid, footer(lang === 'fa' ? '📂 **' + cat.name_fa + '** — یک پرامپت آماده انتخاب کن:' : lang === 'ru' ? '📂 **' + cat.name_en + '** — Выберите готовый промпт:' : '📂 **' + cat.name_en + '** — Select a preset or build your own:'), {
+      if (!cat) return;
+      await setState(chatId, { step: null }, env);
+      await editMessageText(chatId, mid, getMsg(lang, 'choose_preset'), {
         reply_markup: presetsKeyboard(cid, lang)
       }, env);
       return;
@@ -231,7 +280,7 @@ export default {
       await setState(chatId, {
         step: 'awaiting_text', systemPrompt: preset.systemPrompt, categoryId: cid
       }, env);
-      await editMessageText(chatId, mid, footer(getMsg(lang, 'preset_prompt', preset.title)), {
+      await editMessageText(chatId, mid, getMsg(lang, 'preset_prompt', preset.title), {
         reply_markup: backToPresetsKeyboard(cid, lang)
       }, env);
       return;
@@ -240,8 +289,7 @@ export default {
     if (data.startsWith('lang_')) {
       const nl = data.replace('lang_', '');
       await setState(chatId, { lang: nl }, env);
-      const txt = getMsg(nl, 'language_changed');
-      await editMessageText(chatId, mid, footer(txt), {
+      await editMessageText(chatId, mid, getMsg(nl, 'language_changed'), {
         reply_markup: mainMenuKeyboard(nl)
       }, env);
     }
@@ -253,38 +301,50 @@ export default {
 
     try {
       sendChatAction(chatId, 'typing', env).catch(() => {});
-      const status = await sendMessage(chatId, '_' + escapeMD(getMsg(lang, 'generating')) + '_', {}, env);
+      const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
       statusId = status.result?.message_id;
 
       const ai = await enhanceWithAI(text, systemPrompt, env);
       const { prompt, followup } = parseAI(ai);
-      let result = '> ' + escapeMD(text) + '\n\n```\n' + prompt + '\n```';
-      if (followup) result += '\n\n> _' + escapeMD(followup) + '_';
-      result += '\n> ' + escapeMD(FOOTER_TEXT);
 
       await deleteMessage(chatId, statusId, env);
-      await sendMessage(chatId, result, {}, env);
+
+      const content = formatResultMessage(text, prompt, followup, lang);
+      const kb = resultKeyboard(prompt, lang);
+
+      if (followup) {
+        kb.inline_keyboard.push([
+          { text: `💬 ${getMsg(lang, 'answer_followup')}`, callback_data: 'noop' }
+        ]);
+      }
+
+      await sendMessage(chatId, content, { reply_markup: kb }, env);
 
       if (followup) {
         await setState(chatId, { step: 'awaiting_followup', systemPrompt, originalText: text, categoryId }, env);
       } else {
-        await setState(chatId, { step: null, systemPrompt, categoryId }, env);
+        await setState(chatId, { step: null }, env);
       }
     } catch (err) {
       console.error('Prompt error:', err);
       await deleteMessage(chatId, statusId, env);
       try {
-        await sendMessage(chatId, footer(getMsg(lang, 'api_error')), {}, env);
+        await sendMessage(chatId, getMsg(lang, 'api_error'), {
+          reply_markup: mainMenuKeyboard(lang)
+        }, env);
       } catch {}
     }
   },
 
-  async processFollowup(chatId, text, systemPrompt, originalText, categoryId, env) {
+  async processFollowup(chatId, text, systemPrompt, originalText, env) {
     const lang = await getUserLang(chatId, env);
+    const state = await getState(chatId, env);
+    const catId = state?.categoryId || 'freeform';
     let statusId;
 
     try {
-      const status = await sendMessage(chatId, '_' + escapeMD(getMsg(lang, 'generating')) + '_', {}, env);
+      sendChatAction(chatId, 'typing', env).catch(() => {});
+      const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
       statusId = status.result?.message_id;
 
       const refined = originalText + '\n\nAdditional context: ' + text;
@@ -292,16 +352,21 @@ export default {
       const ai = await enhanceWithAI(refined, noFollowup, env);
       const clean = ai.replace(/<\/?PROMPT>/g, '').replace(/<\/?FOLLOWUP>[\s\S]*?<\/FOLLOWUP>/g, '').trim();
       const combined = originalText + '\n' + text;
-      const result = '> ' + escapeMD(combined) + '\n\n```\n' + clean + '\n```\n> ' + escapeMD(FOOTER_TEXT);
 
       await deleteMessage(chatId, statusId, env);
-      await sendMessage(chatId, result, {}, env);
-      await setState(chatId, { step: null, systemPrompt, categoryId }, env);
+
+      const content = formatResultMessage(combined, clean, null, lang);
+      const kb = resultKeyboard(clean, lang);
+
+      await sendMessage(chatId, content, { reply_markup: kb }, env);
+      await setState(chatId, { step: null }, env);
     } catch (err) {
       console.error('Followup error:', err);
       await deleteMessage(chatId, statusId, env);
       try {
-        await sendMessage(chatId, footer(getMsg(lang, 'api_error')), {}, env);
+        await sendMessage(chatId, getMsg(lang, 'api_error'), {
+          reply_markup: mainMenuKeyboard(lang)
+        }, env);
       } catch {}
     }
   }
