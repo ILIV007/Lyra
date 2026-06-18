@@ -66,6 +66,8 @@ Send me your text and I'll optimize it into a professional prompt.`,
 
     answer_followup: 'Send your answer to refine the prompt.',
 
+    select_category_first: '📂 Please select a category from the menu first, then send your text.',
+
     category_display: {
       code: '💻 Code',
       image: '🖼️ Image',
@@ -136,6 +138,8 @@ Send me your text and I'll optimize it into a professional prompt.`,
 
     answer_followup: 'پاسخت رو بفرست تا پرامپت کامل‌تر بشه.',
 
+    select_category_first: '📂 لطفاً اول یک دسته‌بندی از منو انتخاب کن، سپس متنت رو بفرست.',
+
     category_display: {
       code: '💻 کد',
       image: '🖼️ عکس',
@@ -205,6 +209,8 @@ Send me your text and I'll optimize it into a professional prompt.`,
     generating: 'Генерирую ваш промпт...',
 
     answer_followup: 'Отправьте ответ, чтобы уточнить промпт.',
+
+    select_category_first: '📂 Пожалуйста, сначала выберите категорию из меню, затем отправьте ваш текст.',
 
     category_display: {
       code: '💻 Code',

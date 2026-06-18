@@ -1,4 +1,4 @@
-import { CATEGORY_MAP, BASE_4D } from './templates.js';
+import { CATEGORY_MAP } from './templates.js';
 import { getMsg } from './messages.js';
 import { sendMessage, editMessageText, answerCallbackQuery, deleteMessage, sendChatAction, escapeMD } from './telegram.js';
 import { enhanceWithAI } from './openrouter.js';
@@ -116,11 +116,18 @@ export default {
     }
 
     if (state?.step === 'awaiting_followup' && state.systemPrompt) {
-      await this.processFollowup(chatId, text, state.systemPrompt, state.originalText, env);
+      await this.processFollowup(chatId, text, state.systemPrompt, state.originalText, state.categoryId, env);
       return;
     }
 
-    await this.processPrompt(chatId, text, BASE_4D, null, env);
+    if (state?.systemPrompt) {
+      await this.processPrompt(chatId, text, state.systemPrompt, state.categoryId, env);
+      return;
+    }
+
+    await sendMessage(chatId, footer(getMsg(lang, 'select_category_first')), {
+      reply_markup: mainMenuKeyboard(lang)
+    }, env);
   },
 
   async handleCommand(chatId, cmd, msg, env) {
@@ -130,7 +137,7 @@ export default {
     const lowerCmd = cmd.toLowerCase().split(' ')[0].split('@')[0];
     switch (lowerCmd) {
       case '/start':
-        await setState(chatId, { step: null }, env);
+        await setState(chatId, { step: null, systemPrompt: null, categoryId: null, originalText: null }, env);
         await sendMessage(chatId, footer(name ? getMsg(lang, 'start_with_name', escapeMD(name)) : getMsg(lang, 'start')), {
           reply_markup: mainMenuKeyboard(lang)
         }, env);
@@ -161,7 +168,7 @@ export default {
     await answerCallbackQuery(cb.id, null, {}, env);
 
     if (data === 'menu_main') {
-      await setState(chatId, { step: null }, env);
+      await setState(chatId, { step: null, systemPrompt: null, categoryId: null, originalText: null }, env);
       await editMessageText(chatId, mid, footer(getMsg(lang, 'start')), {
         reply_markup: mainMenuKeyboard(lang)
       }, env);
@@ -185,7 +192,7 @@ export default {
     if (data.startsWith('menu_presets_')) {
       const cid = data.replace('menu_presets_', '');
       const cat = CATEGORY_MAP[cid];
-      await setState(chatId, { step: null }, env);
+      await setState(chatId, { step: null, systemPrompt: null, categoryId: null, originalText: null }, env);
       await editMessageText(chatId, mid, footer(lang === 'fa' ? '📂 **' + cat.name_fa + '** — یک پرامپت آماده انتخاب کن:' : lang === 'ru' ? '📂 **' + cat.name_en + '** — Выберите готовый промпт:' : '📂 **' + cat.name_en + '** — Select a preset or build your own:'), {
         reply_markup: presetsKeyboard(cid, lang)
       }, env);
@@ -206,7 +213,7 @@ export default {
     if (data.startsWith('cat_')) {
       const cid = data.split('_')[1];
       const cat = CATEGORY_MAP[cid];
-      await setState(chatId, { step: null }, env);
+      await setState(chatId, { step: null, systemPrompt: null, categoryId: null, originalText: null }, env);
       await editMessageText(chatId, mid, footer(lang === 'fa' ? '📂 **' + cat.name_fa + '** — یک پرامپت آماده انتخاب کن:' : lang === 'ru' ? '📂 **' + cat.name_en + '** — Выберите готовый промпт:' : '📂 **' + cat.name_en + '** — Select a preset or build your own:'), {
         reply_markup: presetsKeyboard(cid, lang)
       }, env);
@@ -261,7 +268,7 @@ export default {
       if (followup) {
         await setState(chatId, { step: 'awaiting_followup', systemPrompt, originalText: text, categoryId }, env);
       } else {
-        await setState(chatId, { step: null }, env);
+        await setState(chatId, { step: null, systemPrompt, categoryId }, env);
       }
     } catch (err) {
       console.error('Prompt error:', err);
@@ -272,7 +279,7 @@ export default {
     }
   },
 
-  async processFollowup(chatId, text, systemPrompt, originalText, env) {
+  async processFollowup(chatId, text, systemPrompt, originalText, categoryId, env) {
     const lang = await getUserLang(chatId, env);
     let statusId;
 
@@ -289,7 +296,7 @@ export default {
 
       await deleteMessage(chatId, statusId, env);
       await sendMessage(chatId, result, {}, env);
-      await setState(chatId, { step: null }, env);
+      await setState(chatId, { step: null, systemPrompt, categoryId }, env);
     } catch (err) {
       console.error('Followup error:', err);
       await deleteMessage(chatId, statusId, env);
