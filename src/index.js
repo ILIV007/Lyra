@@ -5,19 +5,26 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Webhook handler
+    // Webhook handler — await directly so errors return HTTP 500
     if (request.method === 'POST' && path === '/webhook') {
-      const update = await request.json();
-      ctx.waitUntil(bot.handleUpdate(update, env));
-      return new Response('OK');
+      try {
+        const update = await request.json();
+        console.log('Webhook received:', JSON.stringify(update).slice(0, 200));
+        await bot.handleUpdate(update, env);
+        return new Response('OK');
+      } catch (err) {
+        console.error('Webhook error:', err);
+        return new Response(JSON.stringify({ error: err.message, stack: err.stack }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
-    // Debug endpoints (single handler call)
     if (path.startsWith('/debug')) {
       return handleDebug(request, env, path);
     }
 
-    // Status page
     if (path === '/' || path === '/status') {
       return new Response(JSON.stringify({
         status: 'running',
@@ -28,18 +35,16 @@ export default {
       });
     }
 
-    // Fallback
     return new Response('Not Found', { status: 404 });
   }
 };
 
-// Separate debug router function (no changes needed)
+// ------ debug router ------
 async function handleDebug(request, env, path) {
   const url = new URL(request.url);
   const subPath = path.replace('/debug', '') || '/';
   const authKey = url.searchParams.get('key');
 
-  // Optional: require ?key=DEBUG_KEY from secret
   if (env.DEBUG_KEY && authKey !== env.DEBUG_KEY) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
@@ -70,27 +75,30 @@ async function handleDebug(request, env, path) {
   }
 }
 
-// Individual debug handlers
+// ------ debug handlers ------
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
 async function debugOverview(env) {
-  const info = {
+  return json({
     status: 'running',
     bot: 'Lyra',
     version: '1.0.0',
-    telegram: env.TELEGRAM_TOKEN ? '✅ configured' : '❌ missing',
-    openrouter: env.OPENROUTER_API_KEY ? '✅ configured' : '❌ missing',
-    debug: env.DEBUG_KEY ? '✅ protected' : '⚠️ no key (open access)',
-    kv: env.LYRA_STATE ? '✅ bound' : '❌ not bound',
+    telegram: env.TELEGRAM_TOKEN ? 'configured' : 'missing',
+    openrouter: env.OPENROUTER_API_KEY ? 'configured' : 'missing',
+    kv: env.LYRA_STATE ? 'bound' : 'not bound',
     model: env.OPENROUTER_MODEL || 'default',
     lang: env.BOT_LANGUAGE || 'en',
     timestamp: new Date().toISOString()
-  };
-  return json(info);
+  });
 }
 
 async function debugTelegram(env) {
-  if (!env.TELEGRAM_TOKEN) {
-    return json({ error: 'TELEGRAM_TOKEN not set' }, 400);
-  }
+  if (!env.TELEGRAM_TOKEN) return json({ error: 'TELEGRAM_TOKEN not set' }, 400);
   try {
     const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/getMe`);
     const data = await res.json();
@@ -110,28 +118,19 @@ async function debugTelegram(env) {
 }
 
 async function debugOpenRouter(env) {
-  if (!env.OPENROUTER_API_KEY) {
-    return json({ error: 'OPENROUTER_API_KEY not set' }, 400);
-  }
+  if (!env.OPENROUTER_API_KEY) return json({ error: 'OPENROUTER_API_KEY not set' }, 400);
   try {
     const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
       headers: { 'Authorization': `Bearer ${env.OPENROUTER_API_KEY}` }
     });
-    const data = await res.json();
-    return json({
-      auth: data,
-      model: env.OPENROUTER_MODEL || 'default',
-      key_preview: env.OPENROUTER_API_KEY.slice(0, 8) + '...'
-    });
+    return json(await res.json());
   } catch (e) {
     return json({ error: e.message }, 500);
   }
 }
 
 async function debugKV(env) {
-  if (!env.LYRA_STATE) {
-    return json({ error: 'LYRA_STATE KV namespace not bound' }, 400);
-  }
+  if (!env.LYRA_STATE) return json({ error: 'LYRA_STATE KV namespace not bound' }, 400);
   try {
     const keys = [];
     let cursor;
@@ -145,12 +144,7 @@ async function debugKV(env) {
       const val = await env.LYRA_STATE.get(key.name, 'json');
       entries.push({ key: key.name, value: val });
     }
-    return json({
-      total_keys: keys.length,
-      shown: entries.length,
-      entries,
-      truncated: keys.length > 20
-    });
+    return json({ total_keys: keys.length, shown: entries.length, entries, truncated: keys.length > 20 });
   } catch (e) {
     return json({ error: e.message }, 500);
   }
@@ -159,11 +153,8 @@ async function debugKV(env) {
 async function debugEnv(env) {
   const safe = {};
   for (const [k, v] of Object.entries(env)) {
-    if (k === 'TELEGRAM_TOKEN' || k === 'OPENROUTER_API_KEY' || k === 'DEBUG_KEY') {
-      safe[k] = v ? v.slice(0, 8) + '...' : null;
-    } else {
-      safe[k] = v;
-    }
+    safe[k] = ['TELEGRAM_TOKEN', 'OPENROUTER_API_KEY', 'DEBUG_KEY'].includes(k)
+      ? (v ? v.slice(0, 8) + '...' : null) : v;
   }
   return json({ env: safe });
 }
@@ -171,32 +162,17 @@ async function debugEnv(env) {
 async function debugTestUpdate(env, url) {
   const chatId = url.searchParams.get('chat_id');
   const text = url.searchParams.get('text') || 'Hello from Lyra debug!';
-  if (!chatId) {
-    return json({ error: 'Provide ?chat_id=... to send a test message' }, 400);
-  }
-  if (!env.TELEGRAM_TOKEN) {
-    return json({ error: 'TELEGRAM_TOKEN not set' }, 400);
-  }
+  if (!chatId) return json({ error: 'Provide ?chat_id=...' }, 400);
+  if (!env.TELEGRAM_TOKEN) return json({ error: 'TELEGRAM_TOKEN not set' }, 400);
   try {
     const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: parseInt(chatId),
-        text: '`⚙️ Debug Test`\n\n' + text,
-        parse_mode: 'Markdown'
-      })
+      body: JSON.stringify({ chat_id: parseInt(chatId), text: 'Debug Test\n\n' + text })
     });
     const data = await res.json();
     return json({ ok: data.ok, result: data.ok ? 'Message sent' : data.description });
   } catch (e) {
     return json({ error: e.message }, 500);
   }
-}
-
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data, null, 2), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  });
 }
