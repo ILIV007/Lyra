@@ -130,7 +130,8 @@ export default {
     const lang = await getUserLang(chatId, env);
     const name = msg.from?.first_name || '';
 
-    switch (cmd.toLowerCase()) {
+    const lowerCmd = cmd.toLowerCase().split(' ')[0].split('@')[0];
+    switch (lowerCmd) {
       case '/start':
         await setState(chatId, { step: null }, env);
         await sendMessage(chatId, footer(name ? getMsg(lang, 'start_with_name', name) : getMsg(lang, 'start')), {
