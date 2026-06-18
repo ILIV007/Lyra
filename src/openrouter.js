@@ -1,13 +1,22 @@
-const FALLBACK_MODELS = [
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'google/gemma-2-9b-it:free'
+// Free OpenRouter models ranked by quality (June 2026)
+const MODELS = [
+  'openrouter/free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen3-coder:free',
+  'google/gemma-4-31b-it:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  'openai/gpt-oss-120b:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free'
 ];
 
-const TIMEOUT = 15000;
+const TIMEOUT = 30000;
 
 function getModels(env) {
-  const primary = env.OPENROUTER_MODEL || FALLBACK_MODELS[0];
-  return primary === FALLBACK_MODELS[0] ? FALLBACK_MODELS : [primary, FALLBACK_MODELS[0]];
+  const primary = env.OPENROUTER_MODEL;
+  if (!primary || primary === MODELS[0]) return MODELS;
+  const filtered = MODELS.filter(m => m !== primary);
+  return [primary, ...filtered];
 }
 
 export async function enhanceWithAI(userText, systemPrompt, env) {
@@ -48,10 +57,13 @@ export async function enhanceWithAI(userText, systemPrompt, env) {
         if (content) return content;
         lastError = `Empty response from ${model}`;
       } else {
-        lastError = `${model} (${response.status})`;
+        const errBody = await response.text().catch(() => '');
+        lastError = `${model} (${response.status}): ${errBody.slice(0, 100)}`;
+        console.warn(`OpenRouter model ${model} failed: ${lastError}`);
       }
     } catch (e) {
       lastError = `${model}: ${e.message}`;
+      console.warn(`OpenRouter model ${model} error: ${e.message}`);
     }
   }
 
