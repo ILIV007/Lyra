@@ -16,16 +16,20 @@ async function apiCall(method, body, env) {
   return data;
 }
 
+export function escapeMD(text) {
+  return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+}
+
 export async function sendMessage(chatId, text, options, env) {
   return apiCall('sendMessage', {
-    chat_id: chatId, text,
+    chat_id: chatId, text, parse_mode: 'MarkdownV2',
     disable_web_page_preview: true, ...options
   }, env);
 }
 
 export async function editMessageText(chatId, messageId, text, options, env) {
   return apiCall('editMessageText', {
-    chat_id: chatId, message_id: messageId, text,
+    chat_id: chatId, message_id: messageId, text, parse_mode: 'MarkdownV2',
     disable_web_page_preview: true, ...options
   }, env);
 }
