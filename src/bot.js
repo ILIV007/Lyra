@@ -1,6 +1,6 @@
 import { CATEGORY_MAP } from './templates.js';
 import { getMsg } from './messages.js';
-import { sendMessage, editMessageText, answerCallbackQuery, deleteMessage } from './telegram.js';
+import { sendMessage, editMessageText, answerCallbackQuery, deleteMessage, sendChatAction } from './telegram.js';
 import { enhanceWithAI } from './openrouter.js';
 import {
   mainMenuKeyboard,
@@ -238,9 +238,7 @@ export default {
     if (data.startsWith('lang_')) {
       const nl = data.replace('lang_', '');
       await setState(chatId, { lang: nl }, env);
-      const txt = nl === 'fa' ? '🌐 زبان به فارسی تغییر کرد.'
-        : nl === 'ru' ? '🌐 Язык изменён на русский.'
-        : '🌐 Language changed to English.';
+      const txt = getMsg(nl, 'language_changed');
       await editMessageText(chatId, mid, footer(txt), {
         reply_markup: mainMenuKeyboard(nl)
       }, env);
