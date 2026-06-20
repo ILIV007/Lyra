@@ -97,12 +97,11 @@ export default {
       if (update.message) await this.handleMessage(update.message, env);
       else if (update.callback_query) await this.handleCallback(update.callback_query, env);
     } catch (err) {
-      console.error('Update error:', err);
+      console.error('Update error:', err.message, err.stack);
       try {
         const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
         if (!chatId) return;
-        const lang = await getUserLang(chatId, env);
-        await sendMessage(chatId, getMsg(lang, 'error'), { reply_markup: mainMenuKeyboard(lang) }, env);
+        await sendMessage(chatId, '⚠️ Error occurred. Please try /start.', {}, env);
       } catch {}
     }
   },
@@ -176,31 +175,36 @@ export default {
   },
 
   async handleCommand(chatId, cmd, msg, env) {
-    const lang = await getUserLang(chatId, env);
-    const name = msg.from?.first_name || '';
+    try {
+      const lang = await getUserLang(chatId, env);
+      const name = msg.from?.first_name || '';
 
-    const lowerCmd = cmd.toLowerCase().split(' ')[0].split('@')[0];
-    switch (lowerCmd) {
-      case '/start':
-        await setState(chatId, { step: null }, env);
-        await sendMessage(chatId, name ? getMsg(lang, 'start_with_name', name) : getMsg(lang, 'start'), {
-          reply_markup: mainMenuKeyboard(lang)
-        }, env);
-        break;
-      case '/help':
-        await sendMessage(chatId, getMsg(lang, 'help'), {
-          reply_markup: backToMainKeyboard(lang)
-        }, env);
-        break;
-      case '/language':
-        await sendMessage(chatId, getMsg(lang, 'language_prompt'), {
-          reply_markup: languageKeyboard()
-        }, env);
-        break;
-      default:
-        await sendMessage(chatId, getMsg(lang, 'error'), {
-          reply_markup: mainMenuKeyboard(lang)
-        }, env);
+      const lowerCmd = cmd.toLowerCase().split(' ')[0].split('@')[0];
+      switch (lowerCmd) {
+        case '/start':
+          await setState(chatId, { step: null }, env);
+          await sendMessage(chatId, name ? getMsg(lang, 'start_with_name', name) : getMsg(lang, 'start'), {
+            reply_markup: mainMenuKeyboard(lang)
+          }, env);
+          break;
+        case '/help':
+          await sendMessage(chatId, getMsg(lang, 'help'), {
+            reply_markup: backToMainKeyboard(lang)
+          }, env);
+          break;
+        case '/language':
+          await sendMessage(chatId, getMsg(lang, 'language_prompt'), {
+            reply_markup: languageKeyboard()
+          }, env);
+          break;
+        default:
+          await sendMessage(chatId, getMsg(lang, 'error'), {
+            reply_markup: mainMenuKeyboard(lang)
+          }, env);
+      }
+    } catch (err) {
+      console.error('Command error:', err.message, err.stack);
+      await sendMessage(chatId, '⚠️ Command failed. Try /start.', {}, env);
     }
   },
 
@@ -211,6 +215,7 @@ export default {
     const lang = await getUserLang(chatId, env);
 
     if (data === 'noop') {
+      await answerCallbackQuery(cb.id, null, {}, env);
       return;
     }
 
@@ -247,8 +252,8 @@ export default {
       return;
     }
 
-    if (data.endsWith('_custom')) {
-      const cid = data.split('_')[1];
+    if (data.startsWith('custom_')) {
+      const cid = data.slice(7);
       const cat = CATEGORY_MAP[cid];
       if (!cat) return;
       await setState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, categoryId: cid }, env);
@@ -300,7 +305,7 @@ export default {
     let statusId;
 
     try {
-      sendChatAction(chatId, 'typing', env).catch(() => {});
+      await sendChatAction(chatId, 'typing', env).catch(() => {});
       const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
       statusId = status.result?.message_id;
 
@@ -343,7 +348,7 @@ export default {
     let statusId;
 
     try {
-      sendChatAction(chatId, 'typing', env).catch(() => {});
+      await sendChatAction(chatId, 'typing', env).catch(() => {});
       const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
       statusId = status.result?.message_id;
 

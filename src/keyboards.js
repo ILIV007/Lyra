@@ -3,7 +3,7 @@ import { getMsg } from './messages.js';
 
 export function mainMenuKeyboard(lang) {
   const cats = CATEGORIES.map(cat => [
-    { text: `${cat.emoji} ${getMsg(lang, 'category_display', cat.id) || cat.name_en}`, callback_data: `cat_${cat.id}` }
+    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}` }
   ]);
   return {
     inline_keyboard: [
@@ -18,7 +18,7 @@ export function mainMenuKeyboard(lang) {
 
 export function categoriesKeyboard(lang) {
   const cats = CATEGORIES.map(cat => [
-    { text: `${cat.emoji} ${getMsg(lang, 'category_display', cat.id) || cat.name_en}`, callback_data: `cat_${cat.id}` }
+    { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}` }
   ]);
   cats.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
@@ -35,7 +35,7 @@ export function presetsKeyboard(categoryId, lang) {
   ]);
 
   rows.push([
-    { text: `✨ ${lang === 'fa' ? 'ساخت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Custom Prompt'}`, callback_data: `cat_${categoryId}_custom` }
+    { text: `✨ ${lang === 'fa' ? 'ساخت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Custom Prompt'}`, callback_data: `custom_${categoryId}` }
   ]);
   rows.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
@@ -103,6 +103,6 @@ export function replyKeyboard(lang) {
       ]
     ],
     resize_keyboard: true,
-    is_persistent: true
+    persistent: true
   };
 }

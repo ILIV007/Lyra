@@ -1,12 +1,15 @@
 const BASE = (token) => `https://api.telegram.org/bot${token}`;
 
 function assertToken(env) {
-  if (!env.TELEGRAM_TOKEN) throw new Error('TELEGRAM_TOKEN not set in environment');
+  if (!env.TELEGRAM_TOKEN && !env.TELEGRAM_BOT_TOKEN) {
+    throw new Error('TELEGRAM_TOKEN not set in environment');
+  }
 }
 
 async function apiCall(method, body, env) {
   assertToken(env);
-  const res = await fetch(`${BASE(env.TELEGRAM_TOKEN)}/${method}`, {
+  const token = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
+  const res = await fetch(`${BASE(token)}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -60,7 +63,6 @@ async function sendMessage(chatId, content, options, env) {
   const body = { chat_id: chatId, disable_web_page_preview: true, ...options };
   if (typeof content === 'string') {
     body.text = content;
-    body.parse_mode = 'MarkdownV2';
   } else {
     body.text = content.text;
     body.entities = content.entities;
@@ -72,7 +74,6 @@ async function editMessageText(chatId, messageId, content, options, env) {
   const body = { chat_id: chatId, message_id: messageId, disable_web_page_preview: true, ...options };
   if (typeof content === 'string') {
     body.text = content;
-    body.parse_mode = 'MarkdownV2';
   } else {
     body.text = content.text;
     body.entities = content.entities;

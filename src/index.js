@@ -88,7 +88,7 @@ async function debugOverview(env) {
     status: 'running',
     bot: 'Lyra',
     version: '1.0.0',
-    telegram: env.TELEGRAM_TOKEN ? 'configured' : 'missing',
+    telegram: env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN ? 'configured' : 'missing',
     openrouter: env.OPENROUTER_API_KEY ? 'configured' : 'missing',
     kv: env.LYRA_STATE ? 'bound' : 'not bound',
     model: env.OPENROUTER_MODEL || 'default',
@@ -98,17 +98,18 @@ async function debugOverview(env) {
 }
 
 async function debugTelegram(env) {
-  if (!env.TELEGRAM_TOKEN) return json({ error: 'TELEGRAM_TOKEN not set' }, 400);
+  const token = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
+  if (!token) return json({ error: 'TELEGRAM_TOKEN not set' }, 400);
   try {
-    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/getMe`);
+    const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
     const data = await res.json();
     if (data.ok) {
-      const webhookRes = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/getWebhookInfo`);
+      const webhookRes = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
       const webhookData = await webhookRes.json();
       return json({
         bot: data.result,
         webhook: webhookData.ok ? webhookData.result : webhookData,
-        token_preview: env.TELEGRAM_TOKEN.slice(0, 8) + '...'
+        token_preview: token.slice(0, 8) + '...'
       });
     }
     return json({ error: 'Invalid token', response: data }, 400);
@@ -153,7 +154,7 @@ async function debugKV(env) {
 async function debugEnv(env) {
   const safe = {};
   for (const [k, v] of Object.entries(env)) {
-    safe[k] = ['TELEGRAM_TOKEN', 'OPENROUTER_API_KEY', 'DEBUG_KEY'].includes(k)
+    safe[k] = ['TELEGRAM_TOKEN', 'TELEGRAM_BOT_TOKEN', 'OPENROUTER_API_KEY', 'DEBUG_KEY'].includes(k)
       ? (v ? v.slice(0, 8) + '...' : null) : v;
   }
   return json({ env: safe });
@@ -162,10 +163,11 @@ async function debugEnv(env) {
 async function debugTestUpdate(env, url) {
   const chatId = url.searchParams.get('chat_id');
   const text = url.searchParams.get('text') || 'Hello from Lyra debug!';
+  const token = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
   if (!chatId) return json({ error: 'Provide ?chat_id=...' }, 400);
-  if (!env.TELEGRAM_TOKEN) return json({ error: 'TELEGRAM_TOKEN not set' }, 400);
+  if (!token) return json({ error: 'TELEGRAM_TOKEN not set' }, 400);
   try {
-    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: parseInt(chatId), text: 'Debug Test\n\n' + text })
