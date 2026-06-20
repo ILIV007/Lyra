@@ -59,6 +59,12 @@ function buildPreBlock(text, lang) {
   return { t, e };
 }
 
+function buildBlockQuote(text) {
+  const t = '\n' + text;
+  const e = E('expandable_blockquote', 0, t.length);
+  return { t, e };
+}
+
 async function sendMessage(chatId, content, options, env) {
   const body = { chat_id: chatId, disable_web_page_preview: true, ...options };
   if (typeof content === 'string') {
@@ -102,7 +108,7 @@ async function sendChatAction(chatId, action, env) {
 
 export {
   buildMessage, E,
-  B, I, S, U, C, PRE, BQ, P, buildPreBlock,
+  B, I, S, U, C, PRE, BQ, P, buildPreBlock, buildBlockQuote,
   sendMessage, editMessageText, answerCallbackQuery,
   deleteMessage, sendChatAction
 };

@@ -7,10 +7,11 @@ export function mainMenuKeyboard(lang) {
   ]);
   return {
     inline_keyboard: [
+      [{ text: `⚡ ${getMsg(lang, 'reply_freeform')}`, callback_data: 'menu_freeform' }],
       ...cats,
       [
-        { text: '❓ Help', callback_data: 'menu_help' },
-        { text: '🌐 Language', callback_data: 'menu_language' }
+        { text: `❓ ${getMsg(lang, 'reply_help')}`, callback_data: 'menu_help' },
+        { text: `🌐 ${getMsg(lang, 'reply_language')}`, callback_data: 'menu_language' }
       ]
     ]
   };
@@ -35,7 +36,7 @@ export function presetsKeyboard(categoryId, lang) {
   ]);
 
   rows.push([
-    { text: `✨ ${lang === 'fa' ? 'ساخت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Custom Prompt'}`, callback_data: `custom_${categoryId}` }
+    { text: `✨ ${lang === 'fa' ? 'ساخت اختصاصی' : lang === 'ru' ? 'Свой промпт' : 'Custom'}`, callback_data: `custom_${categoryId}` }
   ]);
   rows.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
@@ -60,21 +61,6 @@ export function backToMainKeyboard(lang) {
   };
 }
 
-export function resultKeyboard(promptText, lang) {
-  const maxCopyLen = 256;
-  const copyText = promptText.length > maxCopyLen ? promptText.slice(0, maxCopyLen) : promptText;
-  return {
-    inline_keyboard: [
-      [
-        { text: `📋 ${getMsg(lang, 'copy_btn')}`, copy_text: { text: copyText } }
-      ],
-      [
-        { text: `✨ ${getMsg(lang, 'new_prompt')}`, callback_data: 'menu_main' }
-      ]
-    ]
-  };
-}
-
 export function languageKeyboard() {
   return {
     inline_keyboard: [
@@ -84,7 +70,7 @@ export function languageKeyboard() {
         { text: '🇷🇺 Русский', callback_data: 'lang_ru' }
       ],
       [
-        { text: '🔙 Back', callback_data: 'menu_main' }
+        { text: `🔙 ${getMsg('en', 'back')}`, callback_data: 'menu_main' }
       ]
     ]
   };
@@ -94,12 +80,30 @@ export function replyKeyboard(lang) {
   return {
     keyboard: [
       [
-        { text: `✨ ${getMsg(lang, 'reply_freeform')}` },
+        { text: `✍️ ${getMsg(lang, 'reply_freeform')}` },
         { text: `💻 ${getMsg(lang, 'reply_code')}` }
       ],
       [
-        { text: `🖼️ ${getMsg(lang, 'reply_image')}` },
+        { text: `🎨 ${getMsg(lang, 'reply_image')}` },
         { text: `🎬 ${getMsg(lang, 'reply_video')}` }
+      ]
+    ],
+    resize_keyboard: true,
+    persistent: true,
+    input_field_placeholder: lang === 'fa' ? 'متن خود را وارد کنید...' : lang === 'ru' ? 'Введите текст...' : 'Type your text here...'
+  };
+}
+
+export function followupKeyboard(lang) {
+  return {
+    keyboard: [
+      [
+        { text: `💬 ${getMsg(lang, 'reply_refine')}` },
+        { text: `✨ ${getMsg(lang, 'reply_new_prompt')}` }
+      ],
+      [
+        { text: `✍️ ${getMsg(lang, 'reply_freeform')}` },
+        { text: `💻 ${getMsg(lang, 'reply_code')}` }
       ]
     ],
     resize_keyboard: true,
