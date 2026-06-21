@@ -1,6 +1,7 @@
 {
   "name": "lyra-prompt-bot",
   "version": "1.0.0",
+  "type": "module",
   "description": "Lyra - Telegram Prompt Optimizer Bot on Cloudflare Workers",
   "main": "src/index.js",
   "scripts": {

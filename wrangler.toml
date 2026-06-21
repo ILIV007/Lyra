@@ -1,6 +1,6 @@
 name = "lyra"
 main = "src/index.js"
-compatibility_date = "2024-12-01"
+compatibility_date = "2025-06-01"
 
 [vars]
 OPENROUTER_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
