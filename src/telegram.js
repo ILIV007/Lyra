@@ -60,9 +60,19 @@ function buildPreBlock(text, lang) {
 }
 
 function buildBlockQuote(text) {
-  const t = '\n' + text;
-  const e = E('expandable_blockquote', 0, t.length);
-  return { t, e };
+  const e = E('expandable_blockquote', 0, text.length);
+  return { t: '\n' + text, e };
+}
+
+async function withTyping(chatId, env, fn) {
+  const timer = setInterval(() => {
+    sendChatAction(chatId, 'typing', env).catch(() => {});
+  }, 4000);
+  try {
+    return await fn();
+  } finally {
+    clearInterval(timer);
+  }
 }
 
 async function sendMessage(chatId, content, options, env) {
@@ -110,5 +120,5 @@ export {
   buildMessage, E,
   B, I, S, U, C, PRE, BQ, P, buildPreBlock, buildBlockQuote,
   sendMessage, editMessageText, answerCallbackQuery,
-  deleteMessage, sendChatAction
+  deleteMessage, sendChatAction, withTyping
 };

@@ -80,7 +80,7 @@ export function replyKeyboard(lang) {
   return {
     keyboard: [
       [
-        { text: `✍️ ${getMsg(lang, 'reply_freeform')}` },
+        { text: `✍️ ${getMsg(lang, 'reply_freeform')}`, color: 'primary' },
         { text: `💻 ${getMsg(lang, 'reply_code')}` }
       ],
       [
@@ -98,8 +98,8 @@ export function followupKeyboard(lang) {
   return {
     keyboard: [
       [
-        { text: `💬 ${getMsg(lang, 'reply_refine')}` },
-        { text: `✨ ${getMsg(lang, 'reply_new_prompt')}` }
+        { text: `💬 ${getMsg(lang, 'reply_refine')}`, color: 'primary' },
+        { text: `✨ ${getMsg(lang, 'reply_new_prompt')}`, color: 'primary' }
       ],
       [
         { text: `✍️ ${getMsg(lang, 'reply_freeform')}` },

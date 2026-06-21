@@ -4,7 +4,7 @@ import {
   buildMessage, B, I, C, PRE, BQ, P,
   buildPreBlock, buildBlockQuote,
   sendMessage, editMessageText, answerCallbackQuery,
-  deleteMessage, sendChatAction
+  deleteMessage, sendChatAction, withTyping
 } from './telegram.js';
 import { enhanceWithAI } from './openrouter.js';
 import {
@@ -83,6 +83,16 @@ function formatResultMessage(userText, prompt, followup, lang) {
 
   segs.push(buildBlockQuote(getMsg(lang, 'result_footer')));
   return buildMessage(segs);
+}
+
+function formatHelpMessage(text) {
+  const entities = [];
+  const re = /\/(\w+)/g;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    entities.push({ type: 'code', offset: match.index, length: match[0].length });
+  }
+  return entities.length ? { text, entities } : text;
 }
 
 export default {
@@ -194,11 +204,11 @@ export default {
             reply_markup: mainMenuKeyboard(lang)
           }, env);
           break;
-        case '/help':
-          await sendMessage(chatId, getMsg(lang, 'help'), {
-            reply_markup: backToMainKeyboard(lang)
-          }, env);
-          break;
+      case '/help':
+        await sendMessage(chatId, formatHelpMessage(getMsg(lang, 'help')), {
+          reply_markup: backToMainKeyboard(lang)
+        }, env);
+        break;
         case '/language':
           await sendMessage(chatId, getMsg(lang, 'language_prompt'), {
             reply_markup: languageKeyboard()
@@ -240,7 +250,7 @@ export default {
     }
 
     if (data === 'menu_help') {
-      await editMessageText(chatId, mid, getMsg(lang, 'help'), {
+      await editMessageText(chatId, mid, formatHelpMessage(getMsg(lang, 'help')), {
         reply_markup: backToMainKeyboard(lang)
       }, env);
       return;
@@ -319,16 +329,19 @@ export default {
       const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
       statusId = status.result?.message_id;
 
-      const ai = await enhanceWithAI(text, systemPrompt, env);
+      const ai = await withTyping(chatId, env, () => enhanceWithAI(text, systemPrompt, env));
       const { prompt, followup } = parseAI(ai);
 
       await deleteMessage(chatId, statusId, env);
 
       const content = formatResultMessage(text, prompt, followup, lang);
-      const kb = followup ? followupKeyboard(lang) : replyKeyboard(lang);
 
       await sendMessage(chatId, content, {
-        reply_markup: kb,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: `🏠 ${getMsg(lang, 'main_menu')}`, callback_data: 'menu_main' }]
+          ]
+        },
         reply_parameters: replyToMsgId ? {
           message_id: replyToMsgId,
           quote: text.length > 120 ? text.slice(0, 120) + '...' : text,
@@ -365,7 +378,7 @@ export default {
 
       const refined = originalText + '\n\nAdditional context: ' + text;
       const noFollowup = systemPrompt + '\n\nIMPORTANT: Do NOT generate follow-up questions. Output ONLY the optimized prompt.';
-      const ai = await enhanceWithAI(refined, noFollowup, env);
+      const ai = await withTyping(chatId, env, () => enhanceWithAI(refined, noFollowup, env));
       const clean = ai.replace(/<\/?PROMPT>/g, '').replace(/<\/?FOLLOWUP>[\s\S]*?<\/FOLLOWUP>/g, '').trim();
       const combined = originalText + '\n' + text;
 
@@ -374,7 +387,11 @@ export default {
       const content = formatResultMessage(combined, clean, null, lang);
 
       await sendMessage(chatId, content, {
-        reply_markup: replyKeyboard(lang),
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: `🏠 ${getMsg(lang, 'main_menu')}`, callback_data: 'menu_main' }]
+          ]
+        },
         reply_parameters: replyToMsgId ? {
           message_id: replyToMsgId,
           quote: text.length > 120 ? text.slice(0, 120) + '...' : text,

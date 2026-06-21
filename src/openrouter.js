@@ -1,13 +1,12 @@
 // Free OpenRouter models ranked by quality (June 2026)
 const MODELS = [
   'openrouter/free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'qwen/qwen3-coder:free',
-  'google/gemma-4-31b-it:free',
-  'nvidia/nemotron-3-ultra-550b-a55b:free',
-  'openai/gpt-oss-120b:free',
-  'qwen/qwen3-next-80b-a3b-instruct:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free'
+  'meta-llama/llama-4-maverick:free',
+  'google/gemini-2.5-pro-preview-05-06:free',
+  'qwen/qwq:free',
+  'mistralai/mistral-small-3.1-24b-instruct:free',
+  'deepseek/deepseek-chat-v3-0324:free',
+  'qwen/qwen3-235b-a22b:free'
 ];
 
 const TIMEOUT = 30000;

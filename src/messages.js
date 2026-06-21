@@ -32,13 +32,13 @@ Examples:
 
     api_error: '🌐 AI server hiccup. Try again in a moment.',
 
-    help: `🚀 **Lyra — Prompt Optimizer Guide**
+    help: `🚀 Lyra — Prompt Optimizer Guide
 
 Just send any text → I optimize it into a pro-grade prompt.
 
-💻 **Code** — Generate, review, debug
-🖼️ **Image** — Generate, edit, style transfer
-🎬 **Video** — Scripts, generate, post-prod
+💻 Code — Generate, review, debug
+🖼️ Image — Generate, edit, style transfer
+🎬 Video — Scripts, generate, post-prod
 
 Commands:
 /start — Restart
@@ -50,7 +50,7 @@ Commands:
 
     choose_preset: '📋 Pick a preset:',
 
-    preset_prompt: (title) => `✨ **${title}** selected!
+    preset_prompt: (title) => `✨ ${title} selected!
 
 Send me your text and I'll optimize it into a professional prompt.`,
 
@@ -64,16 +64,16 @@ Send me your text and I'll optimize it into a professional prompt.`,
     result_label_input: '📥 Your Input',
     result_label_prompt: '📤 Optimized Prompt',
     result_label_followup: '💡 Refine it',
-    result_footer: 'Lyra — Crafted with Precision',
+    result_footer: '✦ Lyra — Precision AI Prompts ✦',
 
-    reply_freeform: '✍️ Quick Prompt',
-    reply_code: '💻 Code',
-    reply_image: '🎨 Image',
-    reply_video: '🎬 Video',
-    reply_help: '❓ Guide',
-    reply_language: '🌐 Language',
-    reply_new_prompt: '✨ New Prompt',
-    reply_refine: '💬 Refine'
+    reply_freeform: 'Quick Prompt',
+    reply_code: 'Code',
+    reply_image: 'Image',
+    reply_video: 'Video',
+    reply_help: 'Guide',
+    reply_language: 'Language',
+    reply_new_prompt: 'New Prompt',
+    reply_refine: 'Refine'
   },
 
   fa: {
@@ -105,13 +105,13 @@ Send me your text and I'll optimize it into a professional prompt.`,
 
     api_error: '🌐 خطا در ارتباط با سرور. بعداً امتحان کن.',
 
-    help: `🚀 **لیرا — راهنما**
+    help: `🚀 لیرا — راهنما
 
 هر متنی بفرست → برات پرامپت حرفه‌ای می‌سازم.
 
-💻 **کد** — تولید، بررسی، دیباگ
-🖼️ **عکس** — تولید، ویرایش، انتقال سبک
-🎬 **ویدیو** — اسکریپت، تولید، پست‌پروداکشن
+💻 کد — تولید، بررسی، دیباگ
+🖼️ عکس — تولید، ویرایش، انتقال سبک
+🎬 ویدیو — اسکریپت، تولید، پست‌پروداکشن
 
 دستورات:
 /start — شروع مجدد
@@ -123,7 +123,7 @@ Send me your text and I'll optimize it into a professional prompt.`,
 
     choose_preset: '📋 یه پرامپت آماده انتخاب کن:',
 
-    preset_prompt: (title) => `✨ **${title}** انتخاب شد!
+    preset_prompt: (title) => `✨ ${title} انتخاب شد!
 
 متن مورد نظرت رو بفرست تا برات پرامپت حرفه‌ای بسازم.`,
 
@@ -137,16 +137,16 @@ Send me your text and I'll optimize it into a professional prompt.`,
     result_label_input: '📥 متن شما',
     result_label_prompt: '📤 پرامپت بهینه',
     result_label_followup: '💡 برای بهتر شدن',
-    result_footer: 'لیرا — ساخته شده با دقت',
+    result_footer: '✦ لیرا — پرامپت با دقت ✦',
 
-    reply_freeform: '✍️ متن آزاد',
-    reply_code: '💻 کد',
-    reply_image: '🎨 عکس',
-    reply_video: '🎬 ویدیو',
-    reply_help: '❓ راهنما',
-    reply_language: '🌐 زبان',
-    reply_new_prompt: '✨ پرامپت جدید',
-    reply_refine: '💬 بهبود'
+    reply_freeform: 'متن آزاد',
+    reply_code: 'کد',
+    reply_image: 'عکس',
+    reply_video: 'ویدیو',
+    reply_help: 'راهنما',
+    reply_language: 'زبان',
+    reply_new_prompt: 'پرامپت جدید',
+    reply_refine: 'بهبود'
   },
 
   ru: {
@@ -178,13 +178,13 @@ Send me your text and I'll optimize it into a professional prompt.`,
 
     api_error: '🌐 Ошибка сервера ИИ. Попробуйте позже.',
 
-    help: `🚀 **Lyra — Руководство**
+    help: `🚀 Lyra — Руководство
 
 Отправьте любой текст → я оптимизирую его в промпт.
 
-💻 **Код** — Генерация, ревью, отладка
-🖼️ **Изображения** — Генерация, редактирование, стиль
-🎬 **Видео** — Сценарии, генерация, пост-продакшн
+💻 Код — Генерация, ревью, отладка
+🖼️ Изображения — Генерация, редактирование, стиль
+🎬 Видео — Сценарии, генерация, пост-продакшн
 
 Команды:
 /start — Начать
@@ -196,7 +196,7 @@ Send me your text and I'll optimize it into a professional prompt.`,
 
     choose_preset: '📋 Выберите готовый промпт:',
 
-    preset_prompt: (title) => `✨ **${title}** выбран!
+    preset_prompt: (title) => `✨ ${title} выбран!
 
 Отправьте ваш текст, и я создам профессиональный промпт.`,
 
@@ -210,16 +210,16 @@ Send me your text and I'll optimize it into a professional prompt.`,
     result_label_input: '📥 Ваш текст',
     result_label_prompt: '📤 Оптимизированный промпт',
     result_label_followup: '💡 Уточнения',
-    result_footer: 'Lyra — Создано с точностью',
+    result_footer: '✦ Lyra — Точные промпты ✦',
 
-    reply_freeform: '✍️ Быстрый промпт',
-    reply_code: '💻 Код',
-    reply_image: '🎨 Изображение',
-    reply_video: '🎬 Видео',
-    reply_help: '❓ Помощь',
-    reply_language: '🌐 Язык',
-    reply_new_prompt: '✨ Новый промпт',
-    reply_refine: '💬 Уточнить'
+    reply_freeform: 'Быстрый промпт',
+    reply_code: 'Код',
+    reply_image: 'Изображение',
+    reply_video: 'Видео',
+    reply_help: 'Помощь',
+    reply_language: 'Язык',
+    reply_new_prompt: 'Новый промпт',
+    reply_refine: 'Уточнить'
   }
 };
 
