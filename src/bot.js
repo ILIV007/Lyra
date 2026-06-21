@@ -4,7 +4,7 @@ import {
   buildMessage, B, I, C, PRE, BQ, P,
   buildPreBlock, buildBlockQuote,
   sendMessage, editMessageText, answerCallbackQuery,
-  deleteMessage, sendChatAction, withTyping
+  deleteMessage, withTyping
 } from './telegram.js';
 import { enhanceWithAI } from './openrouter.js';
 import {
@@ -58,10 +58,11 @@ async function setState(chatId, data, env) {
 }
 
 function parseAI(r) {
-  const pm = r.match(/<PROMPT>([\s\S]*?)<\/PROMPT>/);
+  const raw = r.replace(/<\/?FOLLOWUP>[\s\S]*?$/i, '').trim();
+  const pm = raw.match(/<PROMPT>([\s\S]*?)<\/PROMPT>/);
   const fm = r.match(/<FOLLOWUP>([\s\S]*?)<\/FOLLOWUP>/);
   return {
-    prompt: pm ? pm[1].trim() : r.trim(),
+    prompt: pm ? pm[1].trim() : raw.trim(),
     followup: fm ? fm[1].trim() : null
   };
 }
@@ -82,6 +83,7 @@ function formatResultMessage(userText, prompt, followup, lang) {
     segs.push(I(`${getMsg(lang, 'result_label_followup')}: ${followup}\n`));
   }
 
+  segs.push(P('\n'));
   segs.push(buildBlockQuote(getMsg(lang, 'result_footer')));
   return buildMessage(segs);
 }
@@ -145,6 +147,17 @@ export default {
       await setState(chatId, { step: 'awaiting_text', systemPrompt: BASE_4D, categoryId: 'freeform' }, env);
       await sendMessage(chatId, getMsg(lang, 'send_text_prompt', 'Free-Form'), {
         reply_markup: replyKeyboard(lang)
+      }, env);
+      return;
+    }
+
+    if (normMatch(text, `🎯 ${getMsg(lang, 'reply_prompt_for')}`) ||
+        normMatch(text, `💻 ${getMsg(lang, 'reply_code')}`) ||
+        normMatch(text, `🎨 ${getMsg(lang, 'reply_image')}`) ||
+        normMatch(text, `🎬 ${getMsg(lang, 'reply_video')}`)) {
+      await setState(chatId, { step: null }, env);
+      await sendMessage(chatId, getMsg(lang, 'choose_category'), {
+        reply_markup: categoryChoiceKeyboard(lang)
       }, env);
       return;
     }
@@ -249,7 +262,7 @@ export default {
 
     if (data === 'menu_main') {
       await setState(chatId, { step: null }, env);
-      await editMessageText(chatId, mid, getMsg(lang, 'start'), {
+      await sendMessage(chatId, getMsg(lang, 'start'), {
         reply_markup: mainMenuKeyboard(lang)
       }, env);
       return;
@@ -264,14 +277,22 @@ export default {
     }
 
     if (data === 'menu_help') {
-      await editMessageText(chatId, mid, formatHelpMessage(getMsg(lang, 'help')), {
+      await sendMessage(chatId, formatHelpMessage(getMsg(lang, 'help')), {
         reply_markup: backToMainKeyboard(lang)
       }, env);
       return;
     }
 
+    if (data === 'menu_categories') {
+      await setState(chatId, { step: null }, env);
+      await sendMessage(chatId, getMsg(lang, 'choose_category'), {
+        reply_markup: categoryChoiceKeyboard(lang)
+      }, env);
+      return;
+    }
+
     if (data === 'menu_language') {
-      await editMessageText(chatId, mid, getMsg(lang, 'language_prompt'), {
+      await sendMessage(chatId, getMsg(lang, 'language_prompt'), {
         reply_markup: languageKeyboard()
       }, env);
       return;
@@ -280,7 +301,7 @@ export default {
     if (data.startsWith('menu_presets_')) {
       const cid = data.replace('menu_presets_', '');
       await setState(chatId, { step: null }, env);
-      await editMessageText(chatId, mid, getMsg(lang, 'choose_preset'), {
+      await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
         reply_markup: presetsKeyboard(cid, lang)
       }, env);
       return;
@@ -290,16 +311,15 @@ export default {
       const cid = data.slice(7);
       const cat = CATEGORY_MAP[cid];
       if (!cat) return;
-      // Bank category has no custom prompt — show presets only
       if (cid === 'bank') {
-        await editMessageText(chatId, mid, getMsg(lang, 'choose_preset'), {
+        await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
           reply_markup: bankPresetsKeyboard(lang)
         }, env);
         return;
       }
       if (!cat.customSystemPrompt) return;
       await setState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, categoryId: cid }, env);
-      await editMessageText(chatId, mid, getMsg(lang, 'send_text_prompt', cat.name_en), {
+      await sendMessage(chatId, getMsg(lang, 'send_text_prompt', cat.name_en), {
         reply_markup: replyKeyboard(lang)
       }, env);
       return;
@@ -310,7 +330,7 @@ export default {
       const cat = CATEGORY_MAP[cid];
       if (!cat) return;
       await setState(chatId, { step: null }, env);
-      await editMessageText(chatId, mid, getMsg(lang, 'choose_preset'), {
+      await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
         reply_markup: presetsKeyboard(cid, lang)
       }, env);
       return;
@@ -327,7 +347,7 @@ export default {
       await setState(chatId, {
         step: 'awaiting_text', systemPrompt: preset.systemPrompt, categoryId: cid
       }, env);
-      await editMessageText(chatId, mid, getMsg(lang, 'preset_prompt', preset.title), {
+      await sendMessage(chatId, getMsg(lang, 'preset_prompt', preset.title), {
         reply_markup: replyKeyboard(lang)
       }, env);
       return;
@@ -336,7 +356,7 @@ export default {
     if (data.startsWith('lang_')) {
       const nl = data.replace('lang_', '');
       await setState(chatId, { lang: nl }, env);
-      await editMessageText(chatId, mid, getMsg(nl, 'language_changed'), {
+      await sendMessage(chatId, getMsg(nl, 'language_changed'), {
         reply_markup: mainMenuKeyboard(nl)
       }, env);
     }
@@ -347,7 +367,6 @@ export default {
     let statusId;
 
     try {
-      await sendChatAction(chatId, 'typing', env).catch(() => {});
       const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
       statusId = status.result?.message_id;
 
@@ -361,7 +380,7 @@ export default {
       await sendMessage(chatId, content, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: `🏠 ${getMsg(lang, 'main_menu')}`, callback_data: 'menu_main' }]
+            [{ text: `🏠 ${getMsg(lang, 'main_menu')}`, callback_data: 'menu_main', style: 'danger' }]
           ]
         },
         reply_parameters: replyToMsgId ? {
@@ -394,7 +413,6 @@ export default {
     let statusId;
 
     try {
-      await sendChatAction(chatId, 'typing', env).catch(() => {});
       const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
       statusId = status.result?.message_id;
 
@@ -411,7 +429,7 @@ export default {
       await sendMessage(chatId, content, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: `🏠 ${getMsg(lang, 'main_menu')}`, callback_data: 'menu_main' }]
+            [{ text: `🏠 ${getMsg(lang, 'main_menu')}`, callback_data: 'menu_main', style: 'danger' }]
           ]
         },
         reply_parameters: replyToMsgId ? {

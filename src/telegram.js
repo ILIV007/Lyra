@@ -60,14 +60,15 @@ function buildPreBlock(text, lang) {
 }
 
 function buildBlockQuote(text) {
-  const e = E('expandable_blockquote', 1, text.length);
-  return { t: '\n' + text, e };
+  const e = E('blockquote', 0, text.length);
+  return { t: text, e };
 }
 
 async function withTyping(chatId, env, fn) {
+  sendChatAction(chatId, 'typing', env).catch(() => {});
   const timer = setInterval(() => {
     sendChatAction(chatId, 'typing', env).catch(() => {});
-  }, 4000);
+  }, 3000);
   try {
     return await fn();
   } finally {

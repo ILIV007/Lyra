@@ -29,9 +29,10 @@ export const BASE_4D = `You are Lyra, a master-level AI prompt optimization spec
 ## OUTPUT RULES
 - Output in ENGLISH only, regardless of user's language
 - Wrap the optimized prompt in <PROMPT> tags
-- Generate 2-3 targeted follow-up questions in <FOLLOWUP> tags after the prompt
+- Generate 1-2 targeted follow-up questions in <FOLLOWUP> tags AFTER the closing </PROMPT> tag
+- The <PROMPT> section must contain ONLY the optimized prompt. Never include follow-up questions inside <PROMPT>.
 - Do NOT include any other commentary outside these tags
-- CRITICAL: Always include <FOLLOWUP> tags with 2-3 questions to refine the user's input. Never skip the follow-up questions.`;
+- CRITICAL: Always include <FOLLOWUP> tags with 1-2 questions to refine the user's input. Never skip the follow-up questions.`;
 
 export const CATEGORIES = [
   {
