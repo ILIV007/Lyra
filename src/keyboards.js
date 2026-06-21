@@ -17,9 +17,12 @@ export function mainMenuKeyboard(lang) {
   };
 }
 
-export function categoriesKeyboard(lang) {
-  const cats = CATEGORIES.map(cat => [
+export function categoryChoiceKeyboard(lang) {
+  const cats = CATEGORIES.filter(c => c.id !== 'bank').map(cat => [
     { text: `${cat.emoji} ${cat.name_en}`, callback_data: `cat_${cat.id}` }
+  ]);
+  cats.push([
+    { text: `🏦 ${getMsg(lang, 'reply_bank')}`, callback_data: 'cat_bank' }
   ]);
   cats.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
@@ -27,9 +30,24 @@ export function categoriesKeyboard(lang) {
   return { inline_keyboard: cats };
 }
 
+export function bankPresetsKeyboard(lang) {
+  const cat = CATEGORIES.find(c => c.id === 'bank');
+  if (!cat) return mainMenuKeyboard(lang);
+  const rows = cat.presets.map(p => [
+    { text: p.title, callback_data: `preset_bank_${p.id}` }
+  ]);
+  rows.push([
+    { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
+  ]);
+  return { inline_keyboard: rows };
+}
+
 export function presetsKeyboard(categoryId, lang) {
   const cat = CATEGORIES.find(c => c.id === categoryId);
-  if (!cat) return categoriesKeyboard(lang);
+  if (!cat) return categoryChoiceKeyboard(lang);
+
+  // Bank category shows presets differently (inline only)
+  if (categoryId === 'bank') return bankPresetsKeyboard(lang);
 
   const rows = cat.presets.map(p => [
     { text: p.title, callback_data: `preset_${categoryId}_${p.id}` }
@@ -80,12 +98,10 @@ export function replyKeyboard(lang) {
   return {
     keyboard: [
       [
-        { text: `✍️ ${getMsg(lang, 'reply_freeform')}`, color: 'primary' },
-        { text: `💻 ${getMsg(lang, 'reply_code')}` }
+        { text: `✍️ ${getMsg(lang, 'reply_freeform')}`, color: 'primary' }
       ],
       [
-        { text: `🎨 ${getMsg(lang, 'reply_image')}` },
-        { text: `🎬 ${getMsg(lang, 'reply_video')}` }
+        { text: `🎯 ${getMsg(lang, 'reply_prompt_for')}` }
       ]
     ],
     resize_keyboard: true,
@@ -103,7 +119,7 @@ export function followupKeyboard(lang) {
       ],
       [
         { text: `✍️ ${getMsg(lang, 'reply_freeform')}` },
-        { text: `💻 ${getMsg(lang, 'reply_code')}` }
+        { text: `🎯 ${getMsg(lang, 'reply_prompt_for')}` }
       ]
     ],
     resize_keyboard: true,

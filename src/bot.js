@@ -9,7 +9,8 @@ import {
 import { enhanceWithAI } from './openrouter.js';
 import {
   mainMenuKeyboard, presetsKeyboard, backToPresetsKeyboard,
-  backToMainKeyboard, languageKeyboard, replyKeyboard, followupKeyboard
+  backToMainKeyboard, languageKeyboard, replyKeyboard, followupKeyboard,
+  categoryChoiceKeyboard, bankPresetsKeyboard
 } from './keyboards.js';
 
 const cache = new Map();
@@ -95,6 +96,12 @@ function formatHelpMessage(text) {
   return entities.length ? { text, entities } : text;
 }
 
+function normMatch(text, expected) {
+  const a = text.normalize('NFC').replace(/\uFE0F/g, '');
+  const b = expected.normalize('NFC').replace(/\uFE0F/g, '');
+  return a === b;
+}
+
 export default {
   async handleUpdate(update, env) {
     try {
@@ -129,37 +136,35 @@ export default {
       return;
     }
 
-    if (text === `✍️ ${getMsg(lang, 'reply_freeform')}`) {
+    const state = await getState(chatId, env);
+    const msgId = msg.message_id;
+
+    // — reply keyboard buttons (robust emoji matching) —
+
+    if (normMatch(text, `✍️ ${getMsg(lang, 'reply_freeform')}`)) {
+      await setState(chatId, { step: 'awaiting_text', systemPrompt: BASE_4D, categoryId: 'freeform' }, env);
       await sendMessage(chatId, getMsg(lang, 'send_text_prompt', 'Free-Form'), {
         reply_markup: replyKeyboard(lang)
       }, env);
-      await setState(chatId, { step: 'awaiting_text', systemPrompt: BASE_4D, categoryId: 'freeform' }, env);
       return;
     }
 
-    if (text === `💻 ${getMsg(lang, 'reply_code')}`) {
-      await this.enterCategory(chatId, 'code', lang, env);
+    if (normMatch(text, `🎯 ${getMsg(lang, 'reply_prompt_for')}`)) {
+      await setState(chatId, { step: null }, env);
+      await sendMessage(chatId, getMsg(lang, 'choose_category'), {
+        reply_markup: categoryChoiceKeyboard(lang)
+      }, env);
       return;
     }
 
-    if (text === `🎨 ${getMsg(lang, 'reply_image')}`) {
-      await this.enterCategory(chatId, 'image', lang, env);
-      return;
-    }
-
-    if (text === `🎬 ${getMsg(lang, 'reply_video')}`) {
-      await this.enterCategory(chatId, 'video', lang, env);
-      return;
-    }
-
-    if (text === `💬 ${getMsg(lang, 'reply_refine')}`) {
+    if (normMatch(text, `💬 ${getMsg(lang, 'reply_refine')}`)) {
       await sendMessage(chatId, getMsg(lang, 'followup_hint'), {
         reply_markup: followupKeyboard(lang)
       }, env);
       return;
     }
 
-    if (text === `✨ ${getMsg(lang, 'reply_new_prompt')}`) {
+    if (normMatch(text, `✨ ${getMsg(lang, 'reply_new_prompt')}`)) {
       await setState(chatId, { step: null }, env);
       await sendMessage(chatId, getMsg(lang, 'start'), {
         reply_markup: mainMenuKeyboard(lang)
@@ -167,8 +172,7 @@ export default {
       return;
     }
 
-    const state = await getState(chatId, env);
-    const msgId = msg.message_id;
+    // — state-based handlers —
 
     if (state?.step === 'awaiting_text' && state.systemPrompt) {
       await this.processPrompt(chatId, text, state.systemPrompt, state.categoryId, env, msgId);
@@ -180,13 +184,23 @@ export default {
       return;
     }
 
+    // — freeform fallback —
     await this.processPrompt(chatId, text, BASE_4D, 'freeform', env, msgId);
   },
 
   async enterCategory(chatId, categoryId, lang, env) {
-    await setState(chatId, { step: 'awaiting_text', systemPrompt: CATEGORY_MAP[categoryId].customSystemPrompt, categoryId }, env);
-    const catName = CATEGORY_MAP[categoryId]?.name_en || categoryId;
-    await sendMessage(chatId, getMsg(lang, 'send_text_prompt', catName), {
+    const cat = CATEGORY_MAP[categoryId];
+    if (!cat) return;
+    // Bank category: show bank presets inline
+    if (categoryId === 'bank') {
+      await setState(chatId, { step: null }, env);
+      await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
+        reply_markup: bankPresetsKeyboard(lang)
+      }, env);
+      return;
+    }
+    await setState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, categoryId }, env);
+    await sendMessage(chatId, getMsg(lang, 'send_text_prompt', cat.name_en), {
       reply_markup: replyKeyboard(lang)
     }, env);
   },
@@ -276,6 +290,14 @@ export default {
       const cid = data.slice(7);
       const cat = CATEGORY_MAP[cid];
       if (!cat) return;
+      // Bank category has no custom prompt — show presets only
+      if (cid === 'bank') {
+        await editMessageText(chatId, mid, getMsg(lang, 'choose_preset'), {
+          reply_markup: bankPresetsKeyboard(lang)
+        }, env);
+        return;
+      }
+      if (!cat.customSystemPrompt) return;
       await setState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, categoryId: cid }, env);
       await editMessageText(chatId, mid, getMsg(lang, 'send_text_prompt', cat.name_en), {
         reply_markup: replyKeyboard(lang)

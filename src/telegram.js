@@ -60,7 +60,7 @@ function buildPreBlock(text, lang) {
 }
 
 function buildBlockQuote(text) {
-  const e = E('expandable_blockquote', 0, text.length);
+  const e = E('expandable_blockquote', 1, text.length);
   return { t: '\n' + text, e };
 }
 

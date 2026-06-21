@@ -73,7 +73,9 @@ Send me your text and I'll optimize it into a professional prompt.`,
     reply_help: 'Guide',
     reply_language: 'Language',
     reply_new_prompt: 'New Prompt',
-    reply_refine: 'Refine'
+    reply_refine: 'Refine',
+    reply_prompt_for: 'Prompt For...',
+    reply_bank: 'Prompt Bank'
   },
 
   fa: {
@@ -146,7 +148,9 @@ Send me your text and I'll optimize it into a professional prompt.`,
     reply_help: 'راهنما',
     reply_language: 'زبان',
     reply_new_prompt: 'پرامپت جدید',
-    reply_refine: 'بهبود'
+    reply_refine: 'بهبود',
+    reply_prompt_for: 'ساخت پرامپت...',
+    reply_bank: 'بانک پرامپت'
   },
 
   ru: {
@@ -219,7 +223,9 @@ Send me your text and I'll optimize it into a professional prompt.`,
     reply_help: 'Помощь',
     reply_language: 'Язык',
     reply_new_prompt: 'Новый промпт',
-    reply_refine: 'Уточнить'
+    reply_refine: 'Уточнить',
+    reply_prompt_for: 'Создать промпт...',
+    reply_bank: 'Банк промптов'
   }
 };
 
