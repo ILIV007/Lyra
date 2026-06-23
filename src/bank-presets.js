@@ -1,3 +1,17 @@
+// ─── Manual Bank Prompts ─────────────────────────────────────────────
+// To add a new prompt, paste this template inside the BANK_PRESETS array
+// (between existing entries, separated by comma):
+//
+//   {
+//     id: 'your_prompt_id',       // unique lowercase-with-dashes
+//     title: '✨ Your Prompt Name', // shown in the bank menu button
+//     prompt: `Your complete prompt text here.
+// It can span multiple lines.
+// Use [brackets] for placeholders the user should fill.`
+//   },
+//
+// After editing, run: npx wrangler deploy
+
 export const BANK_PRESETS = [
   {
     id: 'stable_face',

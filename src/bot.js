@@ -1,4 +1,4 @@
-import { CATEGORY_MAP, BASE_4D } from './templates.js';
+import { CATEGORY_MAP, base4D, getPresetTitle, getCategoryDisplay } from './templates.js';
 import { BANK_PRESETS } from './bank-presets.js';
 import { getMsg } from './messages.js';
 import {
@@ -128,6 +128,18 @@ async function getBankPresets(env) {
   return presets;
 }
 
+function buildFullPrompt(suffix, lang) {
+  return base4D(lang) + (suffix || '');
+}
+
+async function updateStatus(chatId, messageId, text, env) {
+  try {
+    await editMessageText(chatId, messageId, text, {}, env);
+  } catch {}
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 export default {
   async handleUpdate(update, env) {
     try {
@@ -170,7 +182,7 @@ export default {
     // — reply keyboard buttons (robust emoji matching) —
 
     if (normMatch(text, `✍️ ${getMsg(lang, 'reply_freeform')}`)) {
-      await setState(chatId, { step: 'awaiting_text', systemPrompt: BASE_4D, categoryId: 'freeform' }, env);
+      await setState(chatId, { step: 'awaiting_text', systemPrompt: base4D(lang), categoryId: 'freeform' }, env);
       await sendMessage(chatId, getMsg(lang, 'send_text_prompt', 'Free-Form'), {
         reply_markup: replyKeyboard(lang)
       }, env);
@@ -277,7 +289,7 @@ export default {
     }
 
     // — freeform fallback —
-    await this.processPrompt(chatId, text, BASE_4D, 'freeform', env, msgId);
+    await this.processPrompt(chatId, text, base4D(lang), 'freeform', env, msgId);
   },
 
   async enterCategory(chatId, categoryId, lang, env) {
@@ -292,7 +304,7 @@ export default {
       }, env);
       return;
     }
-    await setState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, categoryId }, env);
+    await setState(chatId, { step: 'awaiting_text', systemPrompt: buildFullPrompt(cat.customSystemPrompt, lang), categoryId }, env);
     await sendMessage(chatId, getMsg(lang, 'send_text_prompt', cat.name_en), {
       reply_markup: replyKeyboard(lang)
     }, env);
@@ -319,6 +331,11 @@ export default {
         case '/language':
           await sendMessage(chatId, getMsg(lang, 'language_prompt'), {
             reply_markup: languageKeyboard()
+          }, env);
+          break;
+        case '/myid':
+          await sendMessage(chatId, `🔑 Your Telegram ID: \`${chatId}\``, {
+            reply_markup: mainMenuKeyboard(lang)
           }, env);
           break;
         case '/admin':
@@ -360,7 +377,7 @@ export default {
     }
 
     if (data === 'menu_freeform') {
-      await setState(chatId, { step: 'awaiting_text', systemPrompt: BASE_4D, categoryId: 'freeform' }, env);
+      await setState(chatId, { step: 'awaiting_text', systemPrompt: base4D(lang), categoryId: 'freeform' }, env);
       await sendMessage(chatId, getMsg(lang, 'send_text_prompt', 'Free-Form'), {
         reply_markup: replyKeyboard(lang)
       }, env);
@@ -410,7 +427,7 @@ export default {
         return;
       }
       if (!cat.customSystemPrompt) return;
-      await setState(chatId, { step: 'awaiting_text', systemPrompt: cat.customSystemPrompt, categoryId: cid }, env);
+      await setState(chatId, { step: 'awaiting_text', systemPrompt: buildFullPrompt(cat.customSystemPrompt, lang), categoryId: cid }, env);
       await sendMessage(chatId, getMsg(lang, 'send_text_prompt', cat.name_en), {
         reply_markup: replyKeyboard(lang)
       }, env);
@@ -507,7 +524,7 @@ export default {
       }
 
       await setState(chatId, {
-        step: 'awaiting_text', systemPrompt: preset.systemPrompt, categoryId: cid
+        step: 'awaiting_text', systemPrompt: buildFullPrompt(preset.systemPrompt, lang), categoryId: cid
       }, env);
       await sendMessage(chatId, getMsg(lang, 'preset_prompt', preset.title), {
         reply_markup: replyKeyboard(lang)
@@ -533,11 +550,39 @@ export default {
     let statusId;
 
     try {
-      const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
+      const statusTexts = [
+        '⏳ 1/3 Processing your request.',
+        '⏳ 1/3 Processing your request..',
+        '⏳ 1/3 Processing your request...',
+        '⏳ 2/3 Optimizing via AI.',
+        '⏳ 2/3 Optimizing via AI..',
+        '⏳ 2/3 Optimizing via AI...',
+        '⏳ 3/3 Formatting result.',
+        '⏳ 3/3 Formatting result..',
+        '⏳ 3/3 Formatting result...'
+      ];
+
+      const status = await sendMessage(chatId, statusTexts[0], {}, env);
       statusId = status.result?.message_id;
 
+      for (let i = 1; i <= 2; i++) {
+        await sleep(250);
+        await updateStatus(chatId, statusId, statusTexts[i], env);
+      }
+
       const ai = await withTyping(chatId, env, () => enhanceWithAI(text, systemPrompt, env));
+
+      for (let i = 3; i <= 5; i++) {
+        await sleep(250);
+        await updateStatus(chatId, statusId, statusTexts[i], env);
+      }
+
       const { prompt, followup } = parseAI(ai);
+
+      for (let i = 6; i <= 8; i++) {
+        await sleep(200);
+        await updateStatus(chatId, statusId, statusTexts[i], env);
+      }
 
       await deleteMessage(chatId, statusId, env);
 
@@ -579,14 +624,42 @@ export default {
     let statusId;
 
     try {
-      const status = await sendMessage(chatId, getMsg(lang, 'generating'), {}, env);
+      const statusTexts = [
+        '⏳ 1/3 Processing your request.',
+        '⏳ 1/3 Processing your request..',
+        '⏳ 1/3 Processing your request...',
+        '⏳ 2/3 Optimizing via AI.',
+        '⏳ 2/3 Optimizing via AI..',
+        '⏳ 2/3 Optimizing via AI...',
+        '⏳ 3/3 Formatting result.',
+        '⏳ 3/3 Formatting result..',
+        '⏳ 3/3 Formatting result...'
+      ];
+
+      const status = await sendMessage(chatId, statusTexts[0], {}, env);
       statusId = status.result?.message_id;
+
+      for (let i = 1; i <= 2; i++) {
+        await sleep(250);
+        await updateStatus(chatId, statusId, statusTexts[i], env);
+      }
 
       const refined = originalText + '\n\nAdditional context: ' + text;
       const noFollowup = systemPrompt + '\n\nIMPORTANT: Do NOT generate follow-up questions. Output ONLY the optimized prompt.';
+
+      for (let i = 3; i <= 5; i++) {
+        await sleep(250);
+        await updateStatus(chatId, statusId, statusTexts[i], env);
+      }
+
       const ai = await withTyping(chatId, env, () => enhanceWithAI(refined, noFollowup, env));
       const clean = ai.replace(/<\/?PROMPT>/g, '').replace(/<\/?FOLLOWUP>[\s\S]*?<\/FOLLOWUP>/g, '').trim();
       const combined = originalText + '\n' + text;
+
+      for (let i = 6; i <= 8; i++) {
+        await sleep(200);
+        await updateStatus(chatId, statusId, statusTexts[i], env);
+      }
 
       await deleteMessage(chatId, statusId, env);
 

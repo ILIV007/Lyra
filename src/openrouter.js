@@ -1,15 +1,13 @@
 // Free OpenRouter models ranked by quality (June 2026)
 const MODELS = [
   'openrouter/free',
-  'meta-llama/llama-4-maverick:free',
   'google/gemini-2.5-pro-preview-05-06:free',
-  'qwen/qwq:free',
-  'mistralai/mistral-small-3.1-24b-instruct:free',
+  'meta-llama/llama-4-maverick:free',
   'deepseek/deepseek-chat-v3-0324:free',
-  'qwen/qwen3-235b-a22b:free'
+  'mistralai/mistral-small-3.1-24b-instruct:free'
 ];
 
-const TIMEOUT = 30000;
+const TIMEOUT = 20000;
 
 function getModels(env) {
   const primary = env.OPENROUTER_MODEL;
@@ -43,7 +41,7 @@ export async function enhanceWithAI(userText, systemPrompt, env) {
             { role: 'user', content: userText }
           ],
           temperature: 0.7,
-          max_tokens: 2048
+          max_tokens: 1536
         }),
         signal: controller.signal
       });
