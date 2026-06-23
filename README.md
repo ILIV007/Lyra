@@ -1,7 +1,3 @@
-
-- https://t.me/Lyra_IVbot
-
-
 # Lyra — AI Prompt Optimizer Telegram Bot
 
 > Transform rough ideas into precision-crafted prompts. Built on Cloudflare Workers.

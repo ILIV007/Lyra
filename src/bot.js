@@ -361,7 +361,7 @@ export default {
 
     if (data === 'menu_freeform') {
       await setState(chatId, { step: 'awaiting_text', systemPrompt: BASE_4D, categoryId: 'freeform' }, env);
-      await editMessageText(chatId, mid, getMsg(lang, 'send_text_prompt', 'Free-Form'), {
+      await sendMessage(chatId, getMsg(lang, 'send_text_prompt', 'Free-Form'), {
         reply_markup: replyKeyboard(lang)
       }, env);
       return;
@@ -519,8 +519,12 @@ export default {
       const nl = data.replace('lang_', '');
       await setState(chatId, { lang: nl }, env);
       await sendMessage(chatId, getMsg(nl, 'language_changed'), {
+        reply_markup: replyKeyboard(nl)
+      }, env);
+      await sendMessage(chatId, getMsg(nl, 'start'), {
         reply_markup: mainMenuKeyboard(nl)
       }, env);
+      return;
     }
   },
 
