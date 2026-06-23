@@ -1,4 +1,5 @@
 import { CATEGORY_MAP, BASE_4D } from './templates.js';
+import { BANK_PRESETS } from './bank-presets.js';
 import { getMsg } from './messages.js';
 import {
   buildMessage, B, I, C, PRE, BQ, P,
@@ -325,6 +326,14 @@ export default {
       return;
     }
 
+    if (data.startsWith('bank_page_')) {
+      const page = parseInt(data.replace('bank_page_', ''), 10) || 0;
+      await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
+        reply_markup: bankPresetsKeyboard(lang, page)
+      }, env);
+      return;
+    }
+
     if (data.startsWith('cat_')) {
       const cid = data.split('_')[1];
       const cat = CATEGORY_MAP[cid];
@@ -344,6 +353,28 @@ export default {
       if (!cat) return;
       const preset = cat.presets.find(p => p.id === pid);
       if (!preset) return;
+
+      // Bank: show ready prompt directly (bypass AI)
+      if (cid === 'bank') {
+        const promptText = preset.prompt || preset.systemPrompt;
+        if (!promptText) return;
+        const segs = [];
+        segs.push(B(`${preset.title}\n`));
+        segs.push(P('\n'));
+        segs.push(buildPreBlock(promptText));
+        segs.push(P('\n'));
+        segs.push(I(getMsg(lang, 'bank_prompt_ready')));
+        await sendMessage(chatId, buildMessage(segs), {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: `🏠 ${getMsg(lang, 'main_menu')}`, callback_data: 'menu_main', style: 'danger' }],
+              [{ text: `🏦 ${getMsg(lang, 'reply_bank')}`, callback_data: 'cat_bank', style: 'success' }]
+            ]
+          }
+        }, env);
+        return;
+      }
+
       await setState(chatId, {
         step: 'awaiting_text', systemPrompt: preset.systemPrompt, categoryId: cid
       }, env);

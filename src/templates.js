@@ -1,3 +1,5 @@
+import { BANK_PRESETS } from './bank-presets.js';
+
 export const BASE_4D = `You are Lyra, a master-level AI prompt optimization specialist. Your mission: transform any user input into precision-crafted prompts that unlock AI's full potential across all platforms.
 
 ## THE 4-D METHODOLOGY
@@ -113,27 +115,7 @@ export const CATEGORIES = [
     name_fa: 'بانک پرامپت',
     name_en: 'Ready Prompts',
     customSystemPrompt: null,
-    presets: [
-      {
-        id: 'stable_face',
-        title: '🧑‍🦰 Stable Face',
-        systemPrompt: `You are an AI prompt optimization specialist for portrait and identity-consistent image generation.
-
-Your task: transform the user's request into a detailed prompt that ensures a character's face remains CONSISTENT across multiple generations or edits.
-
-Focus on:
-- Preserving facial structure, features, and proportions
-- Maintaining consistent identity across different poses, expressions, and angles
-- Using specific seed values and reference techniques
-- Controlling facial landmarks (eyes, nose, mouth, jawline)
-- Managing lighting to preserve face shape
-- Avoiding face distortion or feature drift in multiple generations
-- Adding negative prompts for common face issues (asymmetric eyes, merged features, etc.)
-
-Output the optimized prompt in <PROMPT> tags.
-Do NOT generate follow-up questions for this prompt.`
-      }
-    ]
+    presets: BANK_PRESETS
   }
 ];
 

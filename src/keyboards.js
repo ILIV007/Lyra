@@ -4,7 +4,7 @@ import { getMsg } from './messages.js';
 export function mainMenuKeyboard(lang) {
   return {
     inline_keyboard: [
-      [{ text: `⚡ ${getMsg(lang, 'reply_freeform')}`, callback_data: 'menu_freeform' }],
+      [{ text: `⚡ ${getMsg(lang, 'reply_freeform')}`, callback_data: 'menu_freeform', style: 'danger' }],
       [{ text: `📂 ${getMsg(lang, 'reply_categories')}`, callback_data: 'menu_categories', style: 'primary' }],
       [{ text: `🏦 ${getMsg(lang, 'reply_bank')}`, callback_data: 'cat_bank', style: 'success' }],
       [
@@ -28,12 +28,26 @@ export function categoryChoiceKeyboard(lang) {
   return { inline_keyboard: cats };
 }
 
-export function bankPresetsKeyboard(lang) {
-  const cat = CATEGORIES.find(c => c.id === 'bank');
-  if (!cat) return mainMenuKeyboard(lang);
-  const rows = cat.presets.map(p => [
+export function bankPresetsKeyboard(presets, lang, page = 0) {
+  if (!presets || presets.length === 0) return mainMenuKeyboard(lang);
+  const perPage = 5;
+  const total = presets.length;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const start = page * perPage;
+  const items = presets.slice(start, start + perPage);
+
+  const rows = items.map(p => [
     { text: p.title, callback_data: `preset_bank_${p.id}`, style: 'success' }
   ]);
+
+  if (totalPages > 1) {
+    const nav = [];
+    if (page > 0) nav.push({ text: '◀️', callback_data: `bank_page_${page - 1}` });
+    nav.push({ text: `📄 ${page + 1}/${totalPages}`, callback_data: 'bank_page_info' });
+    if (page < totalPages - 1) nav.push({ text: '▶️', callback_data: `bank_page_${page + 1}` });
+    rows.push(nav);
+  }
+
   rows.push([
     { text: getMsg(lang, 'back'), callback_data: 'menu_main' }
   ]);
@@ -85,7 +99,7 @@ export function languageKeyboard() {
         { text: '🇷🇺 Русский', callback_data: 'lang_ru' }
       ],
       [
-        { text: `🔙 ${getMsg('en', 'back')}`, callback_data: 'menu_main' }
+        { text: getMsg('en', 'back'), callback_data: 'menu_main' }
       ]
     ]
   };
@@ -121,5 +135,19 @@ export function followupKeyboard(lang) {
     ],
     resize_keyboard: true,
     persistent: true
+  };
+}
+
+export function adminPanelKeyboard(lang) {
+  return {
+    inline_keyboard: [
+      [
+        { text: `📝 ${getMsg(lang, 'admin_add_prompt_btn')}`, callback_data: 'admin_add_prompt', style: 'primary' },
+        { text: `📢 ${getMsg(lang, 'admin_broadcast_btn')}`, callback_data: 'admin_broadcast', style: 'primary' }
+      ],
+      [
+        { text: getMsg(lang, 'back'), callback_data: 'menu_main', style: 'danger' }
+      ]
+    ]
   };
 }
