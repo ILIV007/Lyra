@@ -58,7 +58,7 @@ export function presetsKeyboard(categoryId, lang) {
   const cat = CATEGORIES.find(c => c.id === categoryId);
   if (!cat) return categoryChoiceKeyboard(lang);
 
-  if (categoryId === 'bank') return bankPresetsKeyboard(lang);
+  if (categoryId === 'bank') return mainMenuKeyboard(lang);
 
   const rows = cat.presets.map(p => [
     { text: p.title, callback_data: `preset_${categoryId}_${p.id}`, style: 'primary' }

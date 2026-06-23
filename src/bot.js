@@ -11,7 +11,7 @@ import { enhanceWithAI } from './openrouter.js';
 import {
   mainMenuKeyboard, presetsKeyboard, backToPresetsKeyboard,
   backToMainKeyboard, languageKeyboard, replyKeyboard, followupKeyboard,
-  categoryChoiceKeyboard, bankPresetsKeyboard
+  categoryChoiceKeyboard, bankPresetsKeyboard, adminPanelKeyboard
 } from './keyboards.js';
 
 const cache = new Map();
@@ -105,6 +105,29 @@ function normMatch(text, expected) {
   return a === b;
 }
 
+function isAdmin(chatId, env) {
+  const ids = env.ADMIN_IDS?.split(',').map(s => s.trim()).filter(Boolean) || [];
+  return ids.includes(String(chatId));
+}
+
+async function trackUser(chatId, env) {
+  try {
+    await env.LYRA_STATE.put(`lyra_user:${chatId}`, '1');
+  } catch {}
+}
+
+async function getBankPresets(env) {
+  const presets = [...BANK_PRESETS];
+  try {
+    const keys = await env.LYRA_STATE.list({ prefix: 'bank_prompt:' });
+    for (const key of keys.keys) {
+      const val = await env.LYRA_STATE.get(key.name, 'json');
+      if (val) presets.push(val);
+    }
+  } catch {}
+  return presets;
+}
+
 export default {
   async handleUpdate(update, env) {
     try {
@@ -133,6 +156,8 @@ export default {
       await sendMessage(chatId, getMsg(lang, 'error'), { reply_markup: replyKeyboard(lang) }, env);
       return;
     }
+
+    if (!isAdmin(chatId, env)) await trackUser(chatId, env);
 
     if (text.startsWith('/')) {
       await this.handleCommand(chatId, text, msg, env);
@@ -198,6 +223,59 @@ export default {
       return;
     }
 
+    // — admin state handlers —
+
+    if (state?.step === 'admin_add_title') {
+      const tempId = `custom_${Date.now()}`;
+      await setState(chatId, { step: 'admin_add_prompt', tempTitle: text, tempId }, env);
+      await sendMessage(chatId, getMsg(lang, 'admin_add_prompt_text'), {
+        reply_markup: mainMenuKeyboard(lang)
+      }, env);
+      return;
+    }
+
+    if (state?.step === 'admin_add_prompt') {
+      try {
+        const promptData = { id: state.tempId, title: state.tempTitle, prompt: text };
+        await env.LYRA_STATE.put(`bank_prompt:${state.tempId}`, JSON.stringify(promptData));
+        await setState(chatId, { step: null, tempTitle: null, tempId: null }, env);
+        await sendMessage(chatId, getMsg(lang, 'admin_prompt_added', state.tempTitle, state.tempId), {
+          reply_markup: mainMenuKeyboard(lang)
+        }, env);
+      } catch {
+        await sendMessage(chatId, getMsg(lang, 'error'), {}, env);
+      }
+      return;
+    }
+
+    if (state?.step === 'admin_broadcast_msg') {
+      await setState(chatId, { step: null }, env);
+      try {
+        let count = 0;
+        let cursor;
+        do {
+          const result = await env.LYRA_STATE.list({ prefix: 'lyra_user:', cursor });
+          for (const key of result.keys) {
+            const uid = parseInt(key.name.replace('lyra_user:', ''), 10);
+            if (uid) {
+              try { await sendMessage(uid, text, {}, env); count++; } catch {}
+            }
+          }
+          cursor = result.cursor;
+        } while (cursor);
+        if (count === 0) {
+          await sendMessage(chatId, getMsg(lang, 'admin_broadcast_empty'), {}, env);
+        } else {
+          await sendMessage(chatId, getMsg(lang, 'admin_broadcast_done', count), {
+            reply_markup: mainMenuKeyboard(lang)
+          }, env);
+        }
+      } catch {
+        await sendMessage(chatId, getMsg(lang, 'error'), {}, env);
+      }
+      return;
+    }
+
     // — freeform fallback —
     await this.processPrompt(chatId, text, BASE_4D, 'freeform', env, msgId);
   },
@@ -208,8 +286,9 @@ export default {
     // Bank category: show bank presets inline
     if (categoryId === 'bank') {
       await setState(chatId, { step: null }, env);
+      const presets = await getBankPresets(env);
       await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
-        reply_markup: bankPresetsKeyboard(lang)
+        reply_markup: bankPresetsKeyboard(presets, lang)
       }, env);
       return;
     }
@@ -240,6 +319,17 @@ export default {
         case '/language':
           await sendMessage(chatId, getMsg(lang, 'language_prompt'), {
             reply_markup: languageKeyboard()
+          }, env);
+          break;
+        case '/admin':
+          if (!isAdmin(chatId, env)) {
+            await sendMessage(chatId, getMsg(lang, 'admin_not_admin'), {
+              reply_markup: mainMenuKeyboard(lang)
+            }, env);
+            return;
+          }
+          await sendMessage(chatId, getMsg(lang, 'admin_panel'), {
+            reply_markup: adminPanelKeyboard(lang)
           }, env);
           break;
         default:
@@ -313,8 +403,9 @@ export default {
       const cat = CATEGORY_MAP[cid];
       if (!cat) return;
       if (cid === 'bank') {
+        const presets = await getBankPresets(env);
         await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
-          reply_markup: bankPresetsKeyboard(lang)
+          reply_markup: bankPresetsKeyboard(presets, lang)
         }, env);
         return;
       }
@@ -326,10 +417,37 @@ export default {
       return;
     }
 
+    // — admin callbacks —
+
+    if (data === 'admin_add_prompt') {
+      if (!isAdmin(chatId, env)) {
+        await sendMessage(chatId, getMsg(lang, 'admin_not_admin'), {}, env);
+        return;
+      }
+      await setState(chatId, { step: 'admin_add_title' }, env);
+      await sendMessage(chatId, getMsg(lang, 'admin_add_title'), {
+        reply_markup: mainMenuKeyboard(lang)
+      }, env);
+      return;
+    }
+
+    if (data === 'admin_broadcast') {
+      if (!isAdmin(chatId, env)) {
+        await sendMessage(chatId, getMsg(lang, 'admin_not_admin'), {}, env);
+        return;
+      }
+      await setState(chatId, { step: 'admin_broadcast_msg' }, env);
+      await sendMessage(chatId, getMsg(lang, 'admin_broadcast_msg'), {
+        reply_markup: mainMenuKeyboard(lang)
+      }, env);
+      return;
+    }
+
     if (data.startsWith('bank_page_')) {
       const page = parseInt(data.replace('bank_page_', ''), 10) || 0;
+      const presets = await getBankPresets(env);
       await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
-        reply_markup: bankPresetsKeyboard(lang, page)
+        reply_markup: bankPresetsKeyboard(presets, lang, page)
       }, env);
       return;
     }
@@ -339,9 +457,16 @@ export default {
       const cat = CATEGORY_MAP[cid];
       if (!cat) return;
       await setState(chatId, { step: null }, env);
-      await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
-        reply_markup: presetsKeyboard(cid, lang)
-      }, env);
+      if (cid === 'bank') {
+        const presets = await getBankPresets(env);
+        await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
+          reply_markup: bankPresetsKeyboard(presets, lang)
+        }, env);
+      } else {
+        await sendMessage(chatId, getMsg(lang, 'choose_preset'), {
+          reply_markup: presetsKeyboard(cid, lang)
+        }, env);
+      }
       return;
     }
 
@@ -351,7 +476,13 @@ export default {
       const pid = parts.slice(2).join('_');
       const cat = CATEGORY_MAP[cid];
       if (!cat) return;
-      const preset = cat.presets.find(p => p.id === pid);
+      let preset;
+      if (cid === 'bank') {
+        const all = await getBankPresets(env);
+        preset = all.find(p => p.id === pid);
+      } else {
+        preset = cat.presets.find(p => p.id === pid);
+      }
       if (!preset) return;
 
       // Bank: show ready prompt directly (bypass AI)
