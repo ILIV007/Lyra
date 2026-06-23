@@ -85,7 +85,16 @@ function formatResultMessage(userText, prompt, followup, lang) {
   }
 
   segs.push(P('\n'));
-  segs.push(buildBlockQuote(getMsg(lang, 'result_footer')));
+
+  const BOT_URL = 'https://t.me/Lyra_IVbot';
+  const footerText = getMsg(lang, 'result_footer');
+  segs.push({
+    t: footerText,
+    e: [
+      { type: 'blockquote', offset: 0, length: footerText.length },
+      { type: 'text_link', offset: footerText.indexOf('Lyra'), length: 4, url: BOT_URL }
+    ]
+  });
   return buildMessage(segs);
 }
 
