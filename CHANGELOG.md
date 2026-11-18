@@ -1,5 +1,38 @@
 # Changelog
 
+## v2.4.0 — 2026-11-18
+
+Owner live-review fixes, including the missing-prompt root cause:
+
+- **BUGFIX — prompts never arrived: `BUTTON_COPY_TEXT_INVALID`.**
+  Telegram caps `copy_text` button payloads at 256 chars and rejects
+  the *entire* message beyond that. Every real prompt (and every bank
+  preset) is longer, so result cards and bank items were rejected while
+  KV bookkeeping said "done" — and delivery errors were swallowed
+  silently. Found by replaying the exact payloads against the live API.
+  Fix: copy buttons removed everywhere (the `pre` block is natively
+  copyable in clients), delivery failures are now logged, and a
+  regression test forbids copy_text on cards/presets. Earlier "verified
+  live" notes verified state, not delivery — this release verifies the
+  actual API responses end to end.
+- **Platform picker removed.** No more ChatGPT/Claude/Gemini choice in
+  Settings; prompts are built in a universal style, specialised only
+  by category.
+- **One Mode to rule the flow.** A new Mode screen (Home button and the
+  new `/mode` command, registered in all 12 languages) picks the
+  generation bundle: Standard, Ponytail, Caveman, Code, Image, Video.
+  Category chips on the quick-ask screen and the style row in Settings
+  are gone — Mode is the single place.
+- **Prompt Bank is a real bank now:** 7 ready-to-use presets added
+  (Code Review Pro, Debug Detective, Explain It Simply, Professional
+  Email, Socratic Tutor, Photoreal Image Prompt, Precision Summarizer)
+  alongside the 5 style classics — 12 total, in a two-column grid.
+- **Tidier chat:** a menu that cannot be edited (e.g. a rich message)
+  is now deleted before its replacement is sent, and the flow screen
+  is removed when generation starts — no more orphan menus piling up.
+
+Agent: Rick
+
 ## v2.3.0 — 2026-11-18
 
 Owner live-review fixes:

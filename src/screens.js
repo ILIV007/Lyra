@@ -1,8 +1,13 @@
 // screens.js — every screen is a pure function of the user record.
 // Regular screens return { text, entities, keyboard } (entity-based,
 // edit-in-place). Home and Guide are RICH messages (richHome/richGuide
-// return HTML) — they are read-once surfaces, sent fresh each time.
-import { compose, tx, b, i, pre, bq, btn, copyBtn, kb } from "./telegram.js";
+// return HTML) — read-once surfaces, sent fresh each time.
+//
+// NOTE: no copy_text buttons anywhere. Telegram limits copy_text to
+// 256 chars and rejects the WHOLE message otherwise (BUTTON_COPY_TEXT_
+// INVALID) — prompts and presets are far longer. The `pre` block is the
+// copy mechanism: clients render it with a native copy affordance.
+import { compose, tx, b, i, pre, bq, btn, kb } from "./telegram.js";
 import { t, LANGS, LANG_NAME } from "./i18n.js";
 import { BANK, STYLE_LEVELS } from "./styles.js";
 
@@ -10,19 +15,27 @@ const tr = (u) => (key, vars) => t(u.lang, key, vars);
 const homeRow = (u) => [btn(tr(u)("btn_home"), "nav:home")];
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-function styleLabel(u) {
+// The user's "mode" is one bundle: a style (standard/ponytail/caveman)
+// or a craft category (code/image/video). See handlers.bundleOf().
+export function bundleLabel(u) {
   const x = tr(u);
-  if (u.style === "ponytail") return `🐴 Ponytail · ${x(u.level.ponytail === "lite" ? "lvl_lite" : u.level.ponytail === "ultra" ? "lvl_ultra" : "lvl_full")}`;
-  if (u.style === "caveman") return `🪨 Caveman · ${x(u.level.caveman === "ultra" ? "lvl_ultra" : "lvl_std")}`;
-  return x("style_standard");
+  switch (u.bundle) {
+    case "ponytail": return `🐴 Ponytail · ${x(u.level.ponytail === "lite" ? "lvl_lite" : u.level.ponytail === "ultra" ? "lvl_ultra" : "lvl_full")}`;
+    case "caveman": return `🪨 Caveman · ${x(u.level.caveman === "ultra" ? "lvl_ultra" : "lvl_std")}`;
+    case "code": return x("cat_code");
+    case "image": return x("cat_image");
+    case "video": return x("cat_video");
+    default: return x("style_standard");
+  }
 }
 
-function platformLabel(u) {
-  return { chatgpt: "ChatGPT", claude: "Claude", gemini: "Gemini", code: "💻 Code", image: "🖼 Image", video: "🎬 Video" }[u.platform] || "ChatGPT";
-}
-
-function modeLabel(u) {
+function detailLabel(u) {
   return u.mode === "detail" ? tr(u)("mode_detail") : tr(u)("mode_basic");
+}
+
+// One compact line summarising the current setup — Home, Mode, Settings.
+export function settingsLine(u) {
+  return [`🌐 ${LANG_NAME[u.lang]}`, `🎛 ${bundleLabel(u)}`, detailLabel(u)].join("  ·  ");
 }
 
 // ---- rich surfaces ----------------------------------------------------------
@@ -31,14 +44,9 @@ export function homeKeyboard(u) {
   const x = tr(u);
   return kb([
     [btn(x("btn_quick"), "nav:quick", { style: "primary" })],
-    [btn(x("btn_bank"), "nav:bank"), btn(x("btn_settings"), "nav:settings"), btn(x("btn_guide"), "nav:guide")],
+    [btn(x("btn_mode"), "nav:mode"), btn(x("btn_bank"), "nav:bank")],
+    [btn(x("btn_settings"), "nav:settings"), btn(x("btn_guide"), "nav:guide")],
   ]);
-}
-
-// One compact line summarising the current setup — used on Home (rich and
-// plain) and on the Settings screen instead of bulky tables/legends.
-export function settingsLine(u) {
-  return [`🌐 ${LANG_NAME[u.lang]}`, styleLabel(u), platformLabel(u), modeLabel(u)].join("  ·  ");
 }
 
 export function richHome(u) {
@@ -81,15 +89,10 @@ export function home(u) {
 
 export function quickAsk(u) {
   const x = tr(u);
-  const cat = (u.flow && u.flow.cat) || "general";
-  const { text, entities } = compose(b(x("btn_quick")), tx("\n\n"), tx(x("quick_ask")));
-  const mark = (c) => (cat === c ? "✓ " : "");
-  const keyboard = kb([
-    [btn(mark("general") + x("cat_general"), "cat:general"), btn(mark("code") + x("cat_code"), "cat:code")],
-    [btn(mark("image") + x("cat_image"), "cat:image"), btn(mark("video") + x("cat_video"), "cat:video")],
-    homeRow(u),
-  ]);
-  return { text, entities, keyboard };
+  const { text, entities } = compose(
+    b(x("btn_quick")), tx("\n\n"), tx(x("quick_ask")), tx("\n\n"), i(settingsLine(u))
+  );
+  return { text, entities, keyboard: kb([homeRow(u)]) };
 }
 
 export function question(u, idx) {
@@ -98,6 +101,21 @@ export function question(u, idx) {
   const { text, entities } = compose(tx(head), b(x(["q1", "q2", "q3"][idx])));
   const keyboard = kb([
     [btn(x("btn_skip"), "q:skip")],
+    homeRow(u),
+  ]);
+  return { text, entities, keyboard };
+}
+
+export function modeScreen(u) {
+  const x = tr(u);
+  const { text, entities } = compose(
+    b(x("mode_title")), tx("\n\n"), tx(settingsLine(u))
+  );
+  const mark = (key) => (u.bundle === key ? "✓ " : "");
+  const keyboard = kb([
+    [btn(mark("standard") + x("style_standard"), "mode:standard"), btn(mark("ponytail") + x("style_ponytail"), "mode:ponytail")],
+    [btn(mark("caveman") + x("style_caveman"), "mode:caveman"), btn(mark("code") + x("cat_code"), "mode:code")],
+    [btn(mark("image") + x("cat_image"), "mode:image"), btn(mark("video") + x("cat_video"), "mode:video")],
     homeRow(u),
   ]);
   return { text, entities, keyboard };
@@ -112,14 +130,17 @@ export function styleLevels(u, style) {
   const rows = STYLE_LEVELS[style].map((lv) => [
     btn((lv === cur ? "✓ " : "") + x(lvlKey[lv]), `lvl:${style}:${lv}`),
   ]);
-  rows.push([btn(x("btn_back"), "nav:settings"), btn(x("btn_home"), "nav:home")]);
+  rows.push([btn(x("btn_back"), "nav:mode"), btn(x("btn_home"), "nav:home")]);
   return { text, entities, keyboard: kb(rows) };
 }
 
 export function bank(u) {
   const x = tr(u);
   const { text, entities } = compose(b(x("bank_title")), tx("\n\n"), i(x("bank_note")));
-  const rows = BANK.map((p) => [btn(x(p.titleKey), `bank:${p.id}`)]);
+  const rows = [];
+  for (let n = 0; n < BANK.length; n += 2) {
+    rows.push(BANK.slice(n, n + 2).map((p) => btn(x(p.titleKey), `bank:${p.id}`)));
+  }
   rows.push(homeRow(u));
   return { text, entities, keyboard: kb(rows) };
 }
@@ -128,32 +149,19 @@ export function bankItem(u, preset) {
   const x = tr(u);
   const { text, entities } = compose(b(x(preset.titleKey)), tx("\n\n"), pre(preset.content));
   const keyboard = kb([
-    [copyBtn(x("btn_copy"), preset.content)],
     [btn(x("btn_back"), "nav:bank"), btn(x("btn_home"), "nav:home")],
   ]);
   return { text, entities, keyboard };
 }
-
-const PLATFORMS = [
-  ["chatgpt", "ChatGPT"], ["claude", "Claude"], ["gemini", "Gemini"],
-  ["code", "💻 Code"], ["image", "🖼 Image"], ["video", "🎬 Video"],
-];
 
 export function settings(u) {
   const x = tr(u);
   const { text, entities } = compose(
     b(x("settings_title")), tx("\n\n"), tx(settingsLine(u))
   );
-  const prow = PLATFORMS.map(([k, label]) => btn((u.platform === k ? "✓ " : "") + label, `plat:${k}`));
-  const smark = (s) => (u.style === s ? "✓ " : "");
   const keyboard = kb([
-    prow.slice(0, 3),
-    prow.slice(3),
-    [btn((u.mode === "basic" ? "✓ " : "") + x("mode_basic"), "mode:basic"),
-     btn((u.mode === "detail" ? "✓ " : "") + x("mode_detail"), "mode:detail")],
-    [btn(smark("standard") + x("style_standard"), "style:standard"),
-     btn(smark("ponytail") + x("style_ponytail"), "style:ponytail"),
-     btn(smark("caveman") + x("style_caveman"), "style:caveman")],
+    [btn((u.mode === "basic" ? "✓ " : "") + x("mode_basic"), "dt:basic"),
+     btn((u.mode === "detail" ? "✓ " : "") + x("mode_detail"), "dt:detail")],
     [btn(x("set_lang"), "nav:lang"), btn(x("btn_home"), "nav:home")],
   ]);
   return { text, entities, keyboard };
@@ -185,8 +193,8 @@ export function resultCard(u, { idea, prompt }) {
     pre(prompt)
   );
   const keyboard = kb([
-    [copyBtn(x("btn_copy"), prompt), btn(x("btn_refine"), "res:refine")],
-    [btn(x("btn_new"), "nav:quick"), btn(x("btn_home"), "nav:home")],
+    [btn(x("btn_refine"), "res:refine"), btn(x("btn_new"), "nav:quick")],
+    homeRow(u),
   ]);
   return { text, entities, keyboard };
 }

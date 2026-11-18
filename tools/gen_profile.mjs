@@ -5,18 +5,18 @@ import { writeFileSync } from "node:fs";
 import { LOCALES, LANGS } from "../src/i18n.js";
 
 const CMD = {
-  en: ["Open the menu", "How Lyra works"],
-  fa: ["باز کردن منو", "راهنمای لیرا"],
-  ru: ["Открыть меню", "Как работает Lyra"],
-  uk: ["Відкрити меню", "Як працює Lyra"],
-  ar: ["فتح القائمة", "كيف تعمل ليرا"],
-  es: ["Abrir el menú", "Cómo funciona Lyra"],
-  pt: ["Abrir o menu", "Como a Lyra funciona"],
-  de: ["Menü öffnen", "So funktioniert Lyra"],
-  fr: ["Ouvrir le menu", "Comment Lyra fonctionne"],
-  tr: ["Menüyü aç", "Lyra nasıl çalışır"],
-  uz: ["Menyuni ochish", "Lyra qanday ishlaydi"],
-  id: ["Buka menu", "Cara kerja Lyra"],
+  en: ["Open the menu", "How Lyra works", "Pick generation mode"],
+  fa: ["باز کردن منو", "راهنمای لیرا", "انتخاب حالت ساخت"],
+  ru: ["Открыть меню", "Как работает Lyra", "Выбрать режим"],
+  uk: ["Відкрити меню", "Як працює Lyra", "Обрати режим"],
+  ar: ["فتح القائمة", "كيف تعمل ليرا", "اختر وضع الإنشاء"],
+  es: ["Abrir el menú", "Cómo funciona Lyra", "Elegir modo"],
+  pt: ["Abrir o menu", "Como a Lyra funciona", "Escolher modo"],
+  de: ["Menü öffnen", "So funktioniert Lyra", "Modus wählen"],
+  fr: ["Ouvrir le menu", "Comment Lyra fonctionne", "Choisir le mode"],
+  tr: ["Menüyü aç", "Lyra nasıl çalışır", "Modu seç"],
+  uz: ["Menyuni ochish", "Lyra qanday ishlaydi", "Rejimni tanlash"],
+  id: ["Buka menu", "Cara kerja Lyra", "Pilih mode"],
 };
 
 const SHORT = {
@@ -49,6 +49,7 @@ calls.push({
     commands: [
       { command: "start", description: CMD.en[0] },
       { command: "help", description: CMD.en[1] },
+      { command: "mode", description: CMD.en[2] },
     ],
   },
 });
@@ -58,6 +59,7 @@ calls.push({
     commands: [
       { command: "start", description: CMD.en[0] },
       { command: "help", description: CMD.en[1] },
+      { command: "mode", description: CMD.en[2] },
       { command: "admin", description: "Admin panel" },
     ],
     scope: { type: "chat", chat_id: 126679582 },
@@ -79,6 +81,7 @@ for (const { code } of LANGS) {
       commands: [
         { command: "start", description: CMD[code][0] },
         { command: "help", description: CMD[code][1] },
+        { command: "mode", description: CMD[code][2] },
       ],
       language_code: code,
     },
