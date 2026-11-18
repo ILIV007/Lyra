@@ -1,125 +1,104 @@
-const BASE = (token) => `https://api.telegram.org/bot${token}`;
+// telegram.js — raw Bot API client + entity-based formatting helpers.
+// Formatting is built from segments so offsets are computed during assembly
+// (UTF-16 code units = JS string length) — never by searching the final
+// string, which breaks on localized text (the v1 Persian footer bug).
 
-function assertToken(env) {
-  if (!env.TELEGRAM_TOKEN && !env.TELEGRAM_BOT_TOKEN) {
-    throw new Error('TELEGRAM_TOKEN not set in environment');
+export class TgError extends Error {
+  constructor(method, detail) {
+    super(`Telegram ${method} failed: ${detail}`);
+    this.method = method;
+    this.detail = detail;
   }
 }
 
-async function apiCall(method, body, env) {
-  assertToken(env);
-  const token = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
-  const res = await fetch(`${BASE(token)}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  if (!data.ok) throw new Error(`${method}: ${data.description || 'unknown error'} (code: ${data.error_code || 'unknown'})`);
-  return data;
-}
-
-function E(type, offset, length, extra) {
-  const e = { type, offset, length };
-  if (extra) Object.assign(e, extra);
-  return e;
-}
-
-function buildMessage(segments) {
-  let text = '';
-  const entities = [];
-  for (const seg of segments) {
-    const off = text.length;
-    text += seg.t;
-    if (seg.e) {
-      if (Array.isArray(seg.e)) {
-        for (const ent of seg.e) {
-          entities.push({ ...ent, offset: off + ent.offset });
-        }
-      } else {
-        entities.push({ ...seg.e, offset: off });
-      }
+export function createTelegram(token) {
+  const base = `https://api.telegram.org/bot${token}`;
+  async function call(method, body = {}) {
+    const res = await fetch(`${base}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    let data = null;
+    try { data = await res.json(); } catch { /* non-JSON */ }
+    if (!data || !data.ok) {
+      throw new TgError(method, data ? data.description : `HTTP ${res.status}`);
     }
+    return data.result;
+  }
+  return { call };
+}
+
+// ---- segments -------------------------------------------------------------
+// A segment is { text, type?, url? }. compose() flattens segments into
+// { text, entities } with correct UTF-16 offsets.
+export const tx = (text) => ({ text: String(text) });
+export const b = (text) => ({ text: String(text), type: "bold" });
+export const i = (text) => ({ text: String(text), type: "italic" });
+export const code = (text) => ({ text: String(text), type: "code" });
+export const pre = (text, language) => ({ text: String(text), type: "pre", language });
+export const bq = (text, expandable = false) => ({
+  text: String(text), type: expandable ? "expandable_blockquote" : "blockquote",
+});
+export const spoiler = (text) => ({ text: String(text), type: "spoiler" });
+export const lnk = (text, url) => ({ text: String(text), type: "text_link", url });
+
+export function compose(...segs) {
+  let text = "";
+  const entities = [];
+  for (const s of segs.flat()) {
+    if (!s || !s.text) continue;
+    if (s.type) {
+      const e = { type: s.type, offset: text.length, length: s.text.length };
+      if (s.url) e.url = s.url;
+      if (s.language) e.language = s.language;
+      entities.push(e);
+    }
+    text += s.text;
   }
   return { text, entities };
 }
 
-function B(t) { return { t, e: E('bold', 0, t.length) }; }
-function I(t) { return { t, e: E('italic', 0, t.length) }; }
-function S(t) { return { t, e: E('strikethrough', 0, t.length) }; }
-function U(t) { return { t, e: E('underline', 0, t.length) }; }
-function C(t) { return { t, e: E('code', 0, t.length) }; }
-function PRE(t, lang) { return { t, e: E('pre', 0, t.length, lang ? { language: lang } : undefined) }; }
-function BQ(t) { return { t, e: E('expandable_blockquote', 0, t.length) }; }
-function P(t) { return { t }; }
-
-function buildPreBlock(text, lang) {
-  const t = '\n' + text + '\n';
-  const e = E('pre', 0, t.length, lang ? { language: lang } : undefined);
-  return { t, e };
-}
-
-function buildBlockQuote(text) {
-  const e = E('blockquote', 0, text.length);
-  return { t: text, e };
-}
-
-async function withTyping(chatId, env, fn) {
-  sendChatAction(chatId, 'typing', env).catch(() => {});
-  const timer = setInterval(() => {
-    sendChatAction(chatId, 'typing', env).catch(() => {});
-  }, 3000);
-  try {
-    return await fn();
-  } finally {
-    clearInterval(timer);
+// ---- splitter -------------------------------------------------------------
+// Split text into chunks of at most `limit` UTF-16 units, preferring
+// paragraph/line boundaries, remapping entities per chunk. Entities that
+// span a cut are clipped into both chunks.
+export function splitMessage(text, entities = [], limit = 4000) {
+  if (text.length <= limit) return [{ text, entities }];
+  const chunks = [];
+  let rest = text;
+  let restEntities = entities.map((e) => ({ ...e }));
+  while (rest.length > limit) {
+    let cut = rest.lastIndexOf("\n\n", limit);
+    if (cut < limit * 0.4) cut = rest.lastIndexOf("\n", limit);
+    if (cut < limit * 0.4) cut = rest.lastIndexOf(" ", limit);
+    if (cut <= 0) cut = limit;
+    const head = rest.slice(0, cut);
+    const headEntities = [];
+    const tailEntities = [];
+    for (const e of restEntities) {
+      const end = e.offset + e.length;
+      if (end <= cut) headEntities.push(e);
+      else if (e.offset >= cut) tailEntities.push({ ...e, offset: e.offset - cut });
+      else {
+        headEntities.push({ ...e, length: cut - e.offset });
+        tailEntities.push({ ...e, offset: 0, length: end - cut });
+      }
+    }
+    chunks.push({ text: head, entities: headEntities });
+    const tail = rest.slice(cut);
+    const trim = tail.length - tail.replace(/^\n+/, "").length;
+    rest = tail.slice(trim);
+    restEntities = tailEntities
+      .map((e) => ({ ...e, offset: Math.max(0, e.offset - trim) }))
+      .filter((e) => e.offset < rest.length)
+      .map((e) => ({ ...e, length: Math.min(e.length, rest.length - e.offset) }));
   }
+  if (rest) chunks.push({ text: rest, entities: restEntities });
+  return chunks;
 }
 
-async function sendMessage(chatId, content, options, env) {
-  const body = { chat_id: chatId, disable_web_page_preview: true, ...options };
-  if (typeof content === 'string') {
-    body.text = content;
-  } else {
-    body.text = content.text;
-    body.entities = content.entities;
-  }
-  return apiCall('sendMessage', body, env);
-}
-
-async function editMessageText(chatId, messageId, content, options, env) {
-  const body = { chat_id: chatId, message_id: messageId, disable_web_page_preview: true, ...options };
-  if (typeof content === 'string') {
-    body.text = content;
-  } else {
-    body.text = content.text;
-    body.entities = content.entities;
-  }
-  return apiCall('editMessageText', body, env);
-}
-
-async function answerCallbackQuery(callbackQueryId, text, options, env) {
-  return apiCall('answerCallbackQuery', {
-    callback_query_id: callbackQueryId, ...(text ? { text } : {}), ...options
-  }, env);
-}
-
-async function deleteMessage(chatId, messageId, env) {
-  if (!messageId) return;
-  try {
-    await apiCall('deleteMessage', { chat_id: chatId, message_id: messageId }, env);
-  } catch {}
-}
-
-async function sendChatAction(chatId, action, env) {
-  try {
-    await apiCall('sendChatAction', { chat_id: chatId, action }, env);
-  } catch {}
-}
-
-export {
-  buildMessage, E,
-  B, I, S, U, C, PRE, BQ, P, buildPreBlock, buildBlockQuote,
-  sendMessage, editMessageText, answerCallbackQuery,
-  deleteMessage, sendChatAction, withTyping
-};
+// ---- keyboards ------------------------------------------------------------
+export const btn = (text, callback_data, extra = {}) => ({ text, callback_data, ...extra });
+export const copyBtn = (text, copyText) => ({ text, copy_text: { text: copyText } });
+export const kb = (rows) => ({ inline_keyboard: rows });

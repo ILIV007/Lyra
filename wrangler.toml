@@ -1,11 +1,19 @@
 name = "lyra"
 main = "src/index.js"
-compatibility_date = "2025-06-01"
+compatibility_date = "2025-11-17"
 
-[vars]
-OPENROUTER_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
-BOT_LANGUAGE = "en"
+# Lyra v2 runs on the dedicated Lyra Cloudflare account.
+# Deploys are done by Rick via the Workers Scripts API (see README);
+# this file documents the same configuration for wrangler users.
+# Secrets (TELEGRAM_TOKEN, WEBHOOK_SECRET, OPENROUTER_API_KEY) are set in
+# the dashboard / via API — never in this file.
+
+[ai]
+binding = "AI"
 
 [[kv_namespaces]]
 binding = "LYRA_STATE"
-id = "b4ceacd642044b20859fadfd4e663b2b"
+id = "023b8dd9b02145ac8d6840d7e1ff8e7c"
+
+[vars]
+ADMIN_IDS = "126679582"

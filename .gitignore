@@ -1,0 +1,5 @@
+node_modules/
+.secrets.local
+tools/profile_calls.json
+wrangler.toml.local
+.dev.vars
