@@ -12,7 +12,7 @@ Built on the original Lyra 4-D methodology:
 
 ## Features
 
-- **4-D prompt engine** — full methodology with target-platform adaptation
+- **4-D prompt engine** — full methodology, specialised by craft category (general / code / image / video)
   (ChatGPT / Claude / Gemini / Code / Image / Video), restored and hardened
   behind a strict `<PROMPT>` output contract.
 - **Two modes** — ⚡ Basic (instant) and 🔎 Detail (asks 3 clarifying
@@ -20,7 +20,8 @@ Built on the original Lyra 4-D methodology:
 - **Styles** — ✨ Standard, 🐴 **Ponytail** (lite/full/ultra: the crafted
   prompt makes the AI build the laziest solution that works) and 🪨
   **Caveman** (standard/ultra: answer first, zero fluff, facts intact).
-- **Prompt Bank** — copy-ready presets (Lyra Classic, Ponytail, Caveman)
+- **Prompt Bank** — 12 copy-ready presets: Lyra Classic, Code Review Pro, Debug Detective, Socratic Tutor, Ponytail, Caveman and more
+- **One Mode picker** — `/mode` or the Mode button: Standard, Ponytail, Caveman, Code, Image or Video shapes every prompt
   with a real one-tap Copy button. No AI call, zero cost.
 - **12 UI languages** — English, فارسی, Русский, Українська, العربية,
   Español, Português, Deutsch, Français, Türkçe, O'zbek, Bahasa Indonesia.
@@ -42,7 +43,7 @@ src/
   bot.js       update_id dedupe + stale-update age gate
   handlers.js  commands, callbacks, text flows, inline mode, admin
   screens.js   13 screens as pure functions of user state
-  prompts.js   4-D engine: core × platform × mode × style
+  prompts.js   4-D engine: core × category × mode bundle × style
   styles.js    Ponytail/Caveman overlays + bank presets
   providers.js Workers AI (primary) → OpenRouter free chain (fallback)
   telegram.js  API client, entity-based formatting, 4096-safe splitter

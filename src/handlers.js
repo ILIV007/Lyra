@@ -28,6 +28,8 @@ export async function handleUpdate(env, update) {
   }
 
   // Edit `msgId` in place when possible; fall back to a fresh message.
+  // If the tapped message cannot be edited (e.g. it is a rich message),
+  // delete it first so stale menus do not pile up in the chat.
   async function showScreen(chatId, msgId, screen) {
     const body = { chat_id: chatId, text: screen.text, entities: screen.entities, reply_markup: screen.keyboard };
     if (msgId) {
@@ -36,6 +38,8 @@ export async function handleUpdate(env, update) {
         return msgId;
       } catch (e) {
         if (String(e.detail || "").includes("not modified")) return msgId;
+        console.error("editMessageText failed, resending:", String(e.detail || e.message || e));
+        try { await tg.call("deleteMessage", { chat_id: chatId, message_id: msgId }); } catch { /* too old / already gone */ }
       }
     }
     const sent = await tg.call("sendMessage", body);
@@ -43,17 +47,22 @@ export async function handleUpdate(env, update) {
   }
 
   // Deliverables (results, bank items): new message(s), split at 4000,
-  // keyboard on the last part only.
+  // keyboard on the last part only. Chunk failures are LOGGED, never
+  // silently swallowed (a silent catch hid the copy_text bug for days).
   async function deliver(chatId, screen) {
     const parts = splitMessage(screen.text, screen.entities, 4000);
     let last = null;
     for (let n = 0; n < parts.length; n++) {
-      last = await tg.call("sendMessage", {
-        chat_id: chatId,
-        text: parts[n].text,
-        entities: parts[n].entities,
-        reply_markup: n === parts.length - 1 ? screen.keyboard : undefined,
-      });
+      try {
+        last = await tg.call("sendMessage", {
+          chat_id: chatId,
+          text: parts[n].text,
+          entities: parts[n].entities,
+          reply_markup: n === parts.length - 1 ? screen.keyboard : undefined,
+        });
+      } catch (e) {
+        console.error(`deliver chunk ${n + 1}/${parts.length} failed:`, String(e.detail || e.message || e));
+      }
     }
     return last && last.message_id;
   }
@@ -86,8 +95,17 @@ export async function handleUpdate(env, update) {
     try { await tg.call("sendMessage", { chat_id: chatId, text }); } catch { /* user blocked etc. */ }
   }
 
-  function platformFor(u, cat) {
-    return ["code", "image", "video"].includes(cat) ? cat : u.platform;
+  // The Mode bundle drives both the style overlay and the craft category.
+  // There is no target-platform picker any more (owner's call): prompts
+  // are built in a universal style, specialised only by category.
+  function styleFor(u) {
+    return u.bundle === "ponytail" || u.bundle === "caveman" ? u.bundle : "standard";
+  }
+  function catFor(u) {
+    return ["code", "image", "video"].includes(u.bundle) ? u.bundle : "general";
+  }
+  function platformFor(cat) {
+    return ["code", "image", "video"].includes(cat) ? cat : "chatgpt";
   }
 
   // The generation UX is a REAL message that lives: a "writing…" placeholder
@@ -115,21 +133,29 @@ export async function handleUpdate(env, update) {
     await sendText(chatId, text);
   }
 
-  async function runGeneration(u, chatId, { idea, cat = "general", answers = null, refine = null }) {
+  async function runGeneration(u, chatId, { idea, answers = null, refine = null }) {
     if (!(await store.rateOk(u.id))) {
       await sendText(chatId, t(u.lang, "err_rate"));
       return;
+    }
+    // Tidy: the flow/menu screen that led here has done its job — remove
+    // it so the chat keeps only the idea, the placeholder and the card.
+    if (u.flowMsg) {
+      try { await tg.call("deleteMessage", { chat_id: chatId, message_id: u.flowMsg }); } catch { /* already gone */ }
+      u.flowMsg = null;
     }
     let phId = null;
     try {
       const ph = await tg.call("sendMessage", { chat_id: chatId, text: t(u.lang, "generating") });
       phId = ph && ph.message_id;
     } catch { /* placeholder is a nicety, generation continues */ }
+    const cat = catFor(u);
+    const style = styleFor(u);
     const answerLang = ANSWER_LANG_NAME[guessTextLang(idea, u.lang)] || "English";
     const system = buildSystem({
-      platform: platformFor(u, cat),
-      style: u.style,
-      level: u.level[u.style],
+      platform: platformFor(cat),
+      style,
+      level: u.level[style],
       answerLang,
     });
     const userMsg = refine
@@ -155,28 +181,24 @@ export async function handleUpdate(env, update) {
     await finishPlaceholder(chatId, phId, S.resultCard(u, { idea: baseIdea, prompt }));
   }
 
-  async function startIdeaFlow(u, chatId, msgId, cat) {
-    if (u.mode === "detail") {
-      u.flow = { name: "idea", cat, thenQuestions: true };
-    } else {
-      u.flow = { name: "idea", cat };
-    }
+  async function startIdeaFlow(u, chatId, msgId) {
+    u.flow = u.mode === "detail" ? { name: "idea", thenQuestions: true } : { name: "idea" };
+    u.flowMsg = await showScreen(chatId, msgId, S.quickAsk(u));
     await store.saveUser(u);
-    await showScreen(chatId, msgId, S.quickAsk(u));
   }
 
-  async function advanceQuestions(u, chatId, msgId) {
+  async function advanceQuestions(u, chatId) {
     const f = u.flow;
     if (f.idx >= 3) {
       const answers = (f.answers || []).filter((a) => a && a !== "—");
       const idea = f.idea;
-      const cat = f.cat || "general";
       u.flow = null;
       await store.saveUser(u);
-      await runGeneration(u, chatId, { idea, cat, answers });
+      await runGeneration(u, chatId, { idea, answers });
       return;
     }
-    await showScreen(chatId, msgId, S.question(u, f.idx));
+    u.flowMsg = await showScreen(chatId, u.flowMsg, S.question(u, f.idx));
+    await store.saveUser(u);
   }
 
   // ---- messages ------------------------------------------------------------
@@ -201,6 +223,11 @@ export async function handleUpdate(env, update) {
     }
     if (text === "/help") {
       await sendRichGuide(u, chatId, null);
+      return;
+    }
+    if (text === "/mode") {
+      u.flowMsg = await showScreen(chatId, null, S.modeScreen(u));
+      await store.saveUser(u);
       return;
     }
     if (!text) return;
@@ -229,32 +256,31 @@ export async function handleUpdate(env, update) {
       f.answers[f.idx] = text;
       f.idx += 1;
       await store.saveUser(u);
-      await advanceQuestions(u, chatId, u.home);
+      await advanceQuestions(u, chatId);
       return;
     }
     if (f.name === "idea") {
-      const cat = f.cat || "general";
       if (f.thenQuestions) {
-        u.flow = { name: "answers", cat, idea: text, answers: [], idx: 0 };
+        u.flow = { name: "answers", idea: text, answers: [], idx: 0 };
         await store.saveUser(u);
-        await advanceQuestions(u, chatId, u.home);
+        await advanceQuestions(u, chatId);
         return;
       }
       u.flow = null;
       await store.saveUser(u);
       try { await tg.call("setMessageReaction", { chat_id: chatId, message_id: msg.message_id, reaction: [{ type: "emoji", emoji: "⚡" }] }); } catch { /* optional */ }
-      await runGeneration(u, chatId, { idea: text, cat });
+      await runGeneration(u, chatId, { idea: text });
       return;
     }
     // No active flow: any text is an idea (quick-generate).
     try { await tg.call("setMessageReaction", { chat_id: chatId, message_id: msg.message_id, reaction: [{ type: "emoji", emoji: "⚡" }] }); } catch { /* optional */ }
     if (u.mode === "detail") {
-      u.flow = { name: "answers", cat: "general", idea: text, answers: [], idx: 0 };
+      u.flow = { name: "answers", idea: text, answers: [], idx: 0 };
       await store.saveUser(u);
-      await advanceQuestions(u, chatId, u.home);
+      await advanceQuestions(u, chatId);
       return;
     }
-    await runGeneration(u, chatId, { idea: text, cat: "general" });
+    await runGeneration(u, chatId, { idea: text });
     return;
   }
 
@@ -270,44 +296,33 @@ export async function handleUpdate(env, update) {
     const [ns, a, bArg] = data.split(":");
     if (ns === "nav") {
       if (a === "home") { u.flow = null; u.home = await sendRichHome(u, chatId, msgId); await store.saveUser(u); }
-      else if (a === "quick") { await startIdeaFlow(u, chatId, msgId, (u.flow && u.flow.cat) || "general"); }
+      else if (a === "quick") { await startIdeaFlow(u, chatId, msgId); }
+      else if (a === "mode") { await showScreen(chatId, msgId, S.modeScreen(u)); }
       else if (a === "bank") { await showScreen(chatId, msgId, S.bank(u)); }
       else if (a === "settings") { await showScreen(chatId, msgId, S.settings(u)); }
       else if (a === "lang") { await showScreen(chatId, msgId, S.language(u)); }
       else if (a === "guide") { await sendRichGuide(u, chatId, msgId); }
       return;
     }
-    if (ns === "cat") {
-      // Category chips live on the quick-ask screen now: retarget the
-      // pending idea flow and re-render its marks.
-      if (u.flow && u.flow.name === "idea") {
-        u.flow.cat = a;
-        await store.saveUser(u);
-        await showScreen(chatId, msgId, S.quickAsk(u));
-      } else {
-        await startIdeaFlow(u, chatId, msgId, a);
-      }
-      return;
-    }
-    if (ns === "style") {
-      if (a === "standard") {
-        u.style = "standard";
-        await store.saveUser(u);
-        await showScreen(chatId, msgId, S.settings(u));
-      } else {
+    if (ns === "mode") {
+      // Ponytail/Caveman first pick an intensity; the rest apply at once.
+      if (a === "ponytail" || a === "caveman") {
         await showScreen(chatId, msgId, S.styleLevels(u, a));
+      } else {
+        u.bundle = a;
+        await store.saveUser(u);
+        await showScreen(chatId, msgId, S.modeScreen(u));
       }
       return;
     }
     if (ns === "lvl") {
-      u.style = a;
+      u.bundle = a;
       u.level[a] = bArg;
       await store.saveUser(u);
-      await showScreen(chatId, msgId, S.settings(u));
+      await showScreen(chatId, msgId, S.modeScreen(u));
       return;
     }
-    if (ns === "plat") { u.platform = a; await store.saveUser(u); await showScreen(chatId, msgId, S.settings(u)); return; }
-    if (ns === "mode") { u.mode = a; await store.saveUser(u); await showScreen(chatId, msgId, S.settings(u)); return; }
+    if (ns === "dt") { u.mode = a; await store.saveUser(u); await showScreen(chatId, msgId, S.settings(u)); return; }
     if (ns === "lang") {
       u.lang = a;
       u.home = await sendRichHome(u, chatId, msgId);
@@ -335,7 +350,7 @@ export async function handleUpdate(env, update) {
         f.answers[f.idx] = "—";
         f.idx += 1;
         await store.saveUser(u);
-        await advanceQuestions(u, chatId, msgId);
+        await advanceQuestions(u, chatId);
       }
       return;
     }
@@ -390,8 +405,9 @@ export async function handleUpdate(env, update) {
         if (await store.rateOk(iq.from.id)) {
           if (!u) u = defaultUser(iq.from.id);
           const answerLang = ANSWER_LANG_NAME[guessTextLang(query, lang)] || "English";
-          const system = buildSystem({ platform: u.platform, style: u.style, level: u.level[u.style], answerLang });
-          const out = await generate(env, { system, user: buildUser({ idea: query, category: "general" }), fast: true, maxTokens: 900, validate: (txt) => !!parsePrompt(txt) });
+          const style = styleFor(u);
+          const system = buildSystem({ platform: platformFor(catFor(u)), style, level: u.level[style], answerLang });
+          const out = await generate(env, { system, user: buildUser({ idea: query, category: catFor(u) }), fast: true, maxTokens: 900, validate: (txt) => !!parsePrompt(txt) });
           const prompt = parsePrompt(out.text);
           if (prompt) {
             results.push({

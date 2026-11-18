@@ -5,11 +5,13 @@ export function defaultUser(id, lang = "en") {
   return {
     id,
     lang,
-    style: "standard", // standard | ponytail | caveman
+    bundle: "standard", // the Mode: standard | ponytail | caveman | code | image | video
+    style: "standard", // legacy (pre-v2.4) — the bundle now drives style/category
     level: { ponytail: "full", caveman: "standard" },
-    platform: "chatgpt", // chatgpt | claude | gemini | code | image | video
-    mode: "basic", // basic | detail
-    flow: null, // { name, cat?, answers?, lastIdea?, lastPrompt? }
+    platform: "chatgpt", // legacy (pre-v2.4) — no platform picker any more
+    mode: "basic", // basic | detail (question depth)
+    flow: null, // { name, answers?, lastIdea?, lastPrompt? }
+    flowMsg: null, // last flow/menu screen message id (cleaned up on generation)
     home: null, // home message id (edited in place)
     n: 0, // prompts generated
     first: Date.now(),
