@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { richHome, home, settings, settingsLine, modeScreen, resultCard, bankItem, quickAsk, quickAskDetailed, sharpenQuestion } from "../src/screens.js";
+import { home, settings, settingsLine, modeScreen, resultCard, bankItem, quickAsk, quickAskDetailed, sharpenQuestion, heartbeat } from "../src/screens.js";
 import { parseQuestions } from "../src/prompts.js";
 import { splitMessage } from "../src/telegram.js";
 import { BANK } from "../src/styles.js";
@@ -11,23 +11,32 @@ const user = {
   platform: "chatgpt", mode: "basic", flow: null, flowMsg: null,
 };
 
-test("rich home: no table, carries the one-line settings summary", () => {
-  const { html, keyboard } = richHome(user);
-  assert.ok(!html.includes("<table"), "home must not use a table");
-  assert.ok(html.includes(settingsLine(user)));
-  assert.ok(html.includes("<h3>"));
-  assert.ok(html.includes("<h4>"), "settings section is separated by a subheading");
+test("home: one-line settings summary, four keyboard rows, red Detailed", () => {
+  const s = home(user);
+  assert.ok(s.text.includes(settingsLine(user)));
   // Four rows: Quick / Detailed (danger) / Mode+Bank / Settings+Guide.
-  assert.equal(keyboard.inline_keyboard.length, 4);
-  const detail = keyboard.inline_keyboard[1][0];
+  assert.equal(s.keyboard.inline_keyboard.length, 4);
+  const detail = s.keyboard.inline_keyboard[1][0];
   assert.equal(detail.callback_data, "nav:detail");
   assert.equal(detail.style, "danger");
 });
 
-test("plain home mirrors the rich one", () => {
-  const s = home(user);
-  assert.ok(s.text.includes(settingsLine(user)));
-  assert.equal(s.keyboard.inline_keyboard.length, 4);
+test("result card keyboard is minimal: Home only (no Refine/New clutter)", () => {
+  const card = resultCard(user, { idea: "idea", prompt: "p".repeat(60) });
+  const kb = JSON.stringify(card.keyboard);
+  assert.ok(!kb.includes("res:refine"), "no Refine button — refine is by reply now");
+  assert.ok(!kb.includes("nav:quick"), "no New button on the card");
+  assert.ok(kb.includes("nav:home"), "Home stays");
+  assert.equal(card.keyboard.inline_keyboard.length, 1, "one row without sharpen");
+});
+
+test("heartbeat screen: tiny, one tip, one button", () => {
+  const hb = heartbeat(user, 0);
+  assert.ok(hb.text.includes("Still here"));
+  assert.ok(hb.text.includes("💡"), "carries a rotating tip");
+  assert.equal(hb.keyboard.inline_keyboard.length, 1);
+  assert.equal(hb.keyboard.inline_keyboard[0][0].callback_data, "nav:quick");
+  assert.ok(hb.text.length < 300, "stays small — not spam");
 });
 
 test("result card prompt is quote + mono (overlapping entities)", () => {

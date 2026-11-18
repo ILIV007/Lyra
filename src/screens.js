@@ -1,7 +1,8 @@
 // screens.js — every screen is a pure function of the user record.
-// Regular screens return { text, entities, keyboard } (entity-based,
-// edit-in-place). Home and Guide are RICH messages (richHome/richGuide
-// return HTML) — read-once surfaces, sent fresh each time.
+// Menu screens return { text, entities, keyboard } (entity-based) and
+// are edited in place inside the ONE persistent menu message. Only
+// Bank items are RICH (bankItemRich returns HTML) — deliverables are
+// never edited, so rich is safe there.
 //
 // NOTE: no copy_text buttons anywhere. Telegram limits copy_text to
 // 256 chars and rejects the WHOLE message otherwise (BUTTON_COPY_TEXT_
@@ -51,34 +52,6 @@ export function homeKeyboard(u) {
   ]);
 }
 
-export function richHome(u) {
-  const x = tr(u);
-  const html =
-    `<h3>🌀 ${esc(x("start_title"))}</h3>` +
-    `<p>${esc(x("start_body"))}</p>` +
-    `<h4>${esc(x("settings_title"))}</h4>` +
-    `<p>${esc(settingsLine(u))}</p>` +
-    `<blockquote>${esc(x("home_hint"))}</blockquote>`;
-  return { html, keyboard: homeKeyboard(u) };
-}
-
-export function richGuide(u) {
-  const x = tr(u);
-  const body = x("guide_body");
-  const parts = [];
-  for (const para of body.split(/\n{2,}/)) {
-    const lines = para.split("\n").map((s) => s.trim()).filter(Boolean);
-    if (lines.length && lines.every((l) => l.startsWith("•"))) {
-      parts.push(`<ul>${lines.map((l) => `<li>${esc(l.replace(/^•\s*/, ""))}</li>`).join("")}</ul>`);
-    } else if (lines.length) {
-      parts.push(`<p>${esc(lines.join(" "))}</p>`);
-    }
-  }
-  const html = `<h3>${esc(x("guide_title"))}</h3>` + parts.join("");
-  return { html, keyboard: kb([homeRow(u)]) };
-}
-
-// Plain fallback for Home if a client/API rejects the rich payload.
 export function home(u) {
   const x = tr(u);
   const { text, entities } = compose(
@@ -134,16 +107,6 @@ export function modeScreen(u) {
     b(x("mode_title")), tx("\n\n"), tx(settingsLine(u))
   );
   return { text, entities, keyboard: modeKeyboard(u) };
-}
-
-export function richMode(u) {
-  const x = tr(u);
-  const intro = x("mode_title").replace(/^🎛\s*/, "");
-  const html =
-    `<h3>${esc(x("btn_mode"))}</h3>` +
-    `<p>${esc(intro)}</p>` +
-    `<p>${esc(settingsLine(u))}</p>`;
-  return { html, keyboard: modeKeyboard(u) };
 }
 
 export function styleLevels(u, style) {
@@ -233,9 +196,12 @@ export function resultCard(u, { idea, prompt, sharpen = 0 }) {
     // Footer tip rotates by prompt count, loading-screen style.
     tx("\n\n"), i(x(TIP_KEYS[(u.n || 0) % TIP_KEYS.length]))
   );
+  // Card keyboard stays minimal (owner's call): the optional Sharpen
+  // row and Home. No Refine/New buttons — refining happens by REPLYING
+  // to the card, and a new prompt is just a new message.
   const rows = [];
   if (sharpen > 0) rows.push([btn(t(u.lang, "btn_sharpen_fmt", { n: sharpen }), "shrp:start", "success")]);
-  rows.push([btn(x("btn_refine"), "res:refine"), btn(x("btn_new"), "nav:quick")], homeRow(u));
+  rows.push(homeRow(u));
   return { text, entities, keyboard: kb(rows) };
 }
 
@@ -250,10 +216,15 @@ export function sharpenQuestion(u, f) {
   return { text, entities, keyboard: kb(rows) };
 }
 
-export function refineAsk(u) {
+// The 15-day heartbeat: deliberately tiny and tidy — two short lines,
+// one rotating tip, one button. Sent by the Worker's cron (handlers).
+export function heartbeat(u, epoch) {
   const x = tr(u);
-  const { text, entities } = compose(tx(x("refine_ask")));
-  return { text, entities, keyboard: kb([homeRow(u)]) };
+  const { text, entities } = compose(
+    b(x("hb_1")), tx("\n"), tx(x("hb_2")), tx("\n\n"),
+    i(x(TIP_KEYS[epoch % TIP_KEYS.length])),
+  );
+  return { text, entities, keyboard: kb([[btn(x("btn_quick"), "nav:quick", { style: "primary" })]]) };
 }
 
 export function adminHome(u, users) {

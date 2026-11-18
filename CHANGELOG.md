@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.7.0 — 2026-11-18
+
+- **One menu message, edited in place (owner's rule).** All
+  navigation — Home, Settings, Mode, Bank list, Guide, ask/question
+  screens — now edits the single persistent menu message (u.home).
+  Nothing is delete-and-resent any more; Rich survives only on Bank
+  items (deliverables, never edited). This also fixes two latent
+  bugs the old split caused: "New" on a result card edited the card
+  itself into the ask screen (prompt overwritten), and opening a Bank
+  item deleted the list message.
+- **Result card decluttered:** Refine and New buttons removed
+  (owner's call). Refining now happens by REPLYING to the card —
+  the reply is the button; the flow stores the latest card id.
+- **Leftover v1 reply keyboard swept:** fresh menu births and every
+  generation send carry remove_keyboard, so the stale Quick Prompt
+  buttons in the typing area disappear.
+- **15-day heartbeat (Worker cron):** a daily cron trigger runs a
+  gate in KV — exactly one tiny "still alive" message per 15-day
+  epoch per user: two short lines, one rotating tip, one Quick
+  Prompt button. Small and tidy by design, not spam-shaped.
+
 ## v2.6.0 — 2026-11-18
 
 - **Sharpen: optional follow-up questions after a Quick prompt.**
