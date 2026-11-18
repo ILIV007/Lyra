@@ -9,6 +9,7 @@ export default {
   btn_settings: "⚙️ Sozlamalar",
   btn_guide: "❓ Qo'llanma",
   btn_mode: "🎛 Rejim",
+  btn_detail: "🔍 Batafsil prompt",
   mode_title: "🎛 Yaratish rejimi — bittasini tanlang, o'zgartirmaguncha barcha promptlarni shakllantiradi.",
   quick_ask: "✍️ G'oyangizni yuboring — bir qator yetarli. Har qanday til bo'ladi.",
   cats_title: "🎯 Nima yaratamiz?",

@@ -9,6 +9,7 @@ export default {
   btn_settings: "⚙️ Réglages",
   btn_guide: "❓ Guide",
   btn_mode: "🎛 Mode",
+  btn_detail: "🔍 Prompt détaillé",
   mode_title: "🎛 Mode de génération — choisissez-en un, il façonne tous les prompts jusqu'au prochain changement.",
   quick_ask: "✍️ Envoyez votre idée — une ligne suffit. Toutes les langues sont acceptées.",
   cats_title: "🎯 Que créons-nous ?",

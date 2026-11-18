@@ -27,9 +27,20 @@ export async function handleUpdate(env, update) {
     return u;
   }
 
+  // NO-DELETE POLICY (owner's rule): the bot never deletes a message the
+  // user can see — a Home tap once deleted the result card itself. When
+  // leaving a message behind, only its keyboard is stripped: the text
+  // (idea, prompt, preset) stays in the chat, the stale buttons go away.
+  async function stripMarkup(chatId, msgId) {
+    if (!msgId) return;
+    try {
+      await tg.call("editMessageReplyMarkup", { chat_id: chatId, message_id: msgId, reply_markup: { inline_keyboard: [] } });
+    } catch { /* already stripped / too old — harmless */ }
+  }
+
   // Edit `msgId` in place when possible; fall back to a fresh message.
   // If the tapped message cannot be edited (e.g. it is a rich message),
-  // delete it first so stale menus do not pile up in the chat.
+  // strip its keyboard and send the screen fresh below it.
   async function showScreen(chatId, msgId, screen) {
     const body = { chat_id: chatId, text: screen.text, entities: screen.entities, reply_markup: screen.keyboard };
     if (msgId) {
@@ -39,18 +50,18 @@ export async function handleUpdate(env, update) {
       } catch (e) {
         if (String(e.detail || "").includes("not modified")) return msgId;
         console.error("editMessageText failed, resending:", String(e.detail || e.message || e));
-        try { await tg.call("deleteMessage", { chat_id: chatId, message_id: msgId }); } catch { /* too old / already gone */ }
+        await stripMarkup(chatId, msgId);
       }
     }
     const sent = await tg.call("sendMessage", body);
     return sent.message_id;
   }
 
-  // Deliverables (results, bank items): new message(s), split at 4000,
+  // Deliverables: new message(s), split at Telegram's real 4096 limit,
   // keyboard on the last part only. Chunk failures are LOGGED, never
   // silently swallowed (a silent catch hid the copy_text bug for days).
   async function deliver(chatId, screen) {
-    const parts = splitMessage(screen.text, screen.entities, 4000);
+    const parts = splitMessage(screen.text, screen.entities, 4096);
     let last = null;
     for (let n = 0; n < parts.length; n++) {
       try {
@@ -67,29 +78,30 @@ export async function handleUpdate(env, update) {
     return last && last.message_id;
   }
 
-  // Rich surfaces (Home, Guide) are read-once deliverables: rich messages
-  // cannot be edited, so they are sent fresh; the previous menu message is
-  // deleted to keep the chat tidy. Any rich failure falls back to the
-  // plain entity screen so navigation never breaks.
-  async function sendRich(chatId, rich, plainScreen, deleteMsgId) {
+  // Rich surfaces (Home, Guide, Mode, Bank items) are read-once
+  // deliverables: rich messages cannot be edited, so they are sent fresh.
+  // The source message is NEVER deleted (no-delete policy) — only its
+  // keyboard is stripped. Any rich failure falls back to the plain
+  // entity screen so navigation never breaks.
+  async function sendRich(chatId, rich, plainScreen, sourceMsgId) {
     try {
       const sent = await tg.call("sendRichMessage", {
         chat_id: chatId,
         rich_message: { html: rich.html },
         reply_markup: rich.keyboard,
       });
-      if (deleteMsgId && deleteMsgId !== sent.message_id) {
-        try { await tg.call("deleteMessage", { chat_id: chatId, message_id: deleteMsgId }); } catch { /* already gone */ }
-      }
+      if (sourceMsgId && sourceMsgId !== sent.message_id) await stripMarkup(chatId, sourceMsgId);
       return sent.message_id;
     } catch (e) {
       console.error("rich send failed, falling back:", String(e && e.message || e));
+      if (sourceMsgId) await stripMarkup(chatId, sourceMsgId);
       return showScreen(chatId, null, plainScreen);
     }
   }
 
-  const sendRichHome = (u, chatId, deleteMsgId) => sendRich(chatId, S.richHome(u), S.home(u), deleteMsgId);
-  const sendRichGuide = (u, chatId, deleteMsgId) => sendRich(chatId, S.richGuide(u), S.guide(u), deleteMsgId);
+  const sendRichHome = (u, chatId, sourceMsgId) => sendRich(chatId, S.richHome(u), S.home(u), sourceMsgId);
+  const sendRichGuide = (u, chatId, sourceMsgId) => sendRich(chatId, S.richGuide(u), S.guide(u), sourceMsgId);
+  const sendRichMode = (u, chatId, sourceMsgId) => sendRich(chatId, S.richMode(u), S.modeScreen(u), sourceMsgId);
 
   async function sendText(chatId, text) {
     try { await tg.call("sendMessage", { chat_id: chatId, text }); } catch { /* user blocked etc. */ }
@@ -113,16 +125,31 @@ export async function handleUpdate(env, update) {
   // which the owner prefers). No sendMessageDraft — drafts are ephemeral,
   // render as an empty live bubble on some clients and vanish on their own.
   async function finishPlaceholder(chatId, phId, screen) {
-    if (phId && screen.text.length <= 4000) {
+    if (phId) {
+      // Edit the placeholder into chunk 1 and send any remaining chunks —
+      // the placeholder is never deleted (no-delete policy).
+      const parts = splitMessage(screen.text, screen.entities, 4096);
       try {
         await tg.call("editMessageText", {
           chat_id: chatId, message_id: phId,
-          text: screen.text, entities: screen.entities, reply_markup: screen.keyboard,
+          text: parts[0].text, entities: parts[0].entities,
+          reply_markup: parts.length === 1 ? screen.keyboard : undefined,
         });
+        for (let n = 1; n < parts.length; n++) {
+          try {
+            await tg.call("sendMessage", {
+              chat_id: chatId, text: parts[n].text, entities: parts[n].entities,
+              reply_markup: n === parts.length - 1 ? screen.keyboard : undefined,
+            });
+          } catch (e) {
+            console.error(`finishPlaceholder chunk ${n + 1}/${parts.length} failed:`, String(e.detail || e.message || e));
+          }
+        }
         return;
-      } catch { /* fall through to a fresh card */ }
+      } catch (e) {
+        console.error("finishPlaceholder edit failed, delivering fresh:", String(e.detail || e.message || e));
+      }
     }
-    if (phId) { try { await tg.call("deleteMessage", { chat_id: chatId, message_id: phId }); } catch { /* gone */ } }
     await deliver(chatId, screen);
   }
 
@@ -138,10 +165,10 @@ export async function handleUpdate(env, update) {
       await sendText(chatId, t(u.lang, "err_rate"));
       return;
     }
-    // Tidy: the flow/menu screen that led here has done its job — remove
-    // it so the chat keeps only the idea, the placeholder and the card.
+    // Tidy without deleting: the flow screen that led here keeps its text
+    // but loses its keyboard, so no stale buttons stay behind.
     if (u.flowMsg) {
-      try { await tg.call("deleteMessage", { chat_id: chatId, message_id: u.flowMsg }); } catch { /* already gone */ }
+      await stripMarkup(chatId, u.flowMsg);
       u.flowMsg = null;
     }
     let phId = null;
@@ -181,8 +208,8 @@ export async function handleUpdate(env, update) {
     await finishPlaceholder(chatId, phId, S.resultCard(u, { idea: baseIdea, prompt }));
   }
 
-  async function startIdeaFlow(u, chatId, msgId) {
-    u.flow = u.mode === "detail" ? { name: "idea", thenQuestions: true } : { name: "idea" };
+  async function startIdeaFlow(u, chatId, msgId, { forceQuestions = false } = {}) {
+    u.flow = u.mode === "detail" || forceQuestions ? { name: "idea", thenQuestions: true } : { name: "idea" };
     u.flowMsg = await showScreen(chatId, msgId, S.quickAsk(u));
     await store.saveUser(u);
   }
@@ -211,7 +238,8 @@ export async function handleUpdate(env, update) {
 
     if (text === "/start" || text.startsWith("/start ")) {
       u.flow = null;
-      u.home = await sendRichHome(u, chatId, null);
+      // Strip the previous home's keyboard (its text stays), then fresh home.
+      u.home = await sendRichHome(u, chatId, u.home);
       await store.saveUser(u);
       return;
     }
@@ -226,8 +254,7 @@ export async function handleUpdate(env, update) {
       return;
     }
     if (text === "/mode") {
-      u.flowMsg = await showScreen(chatId, null, S.modeScreen(u));
-      await store.saveUser(u);
+      await sendRichMode(u, chatId, null);
       return;
     }
     if (!text) return;
@@ -297,7 +324,8 @@ export async function handleUpdate(env, update) {
     if (ns === "nav") {
       if (a === "home") { u.flow = null; u.home = await sendRichHome(u, chatId, msgId); await store.saveUser(u); }
       else if (a === "quick") { await startIdeaFlow(u, chatId, msgId); }
-      else if (a === "mode") { await showScreen(chatId, msgId, S.modeScreen(u)); }
+      else if (a === "detail") { await startIdeaFlow(u, chatId, msgId, { forceQuestions: true }); }
+      else if (a === "mode") { await sendRichMode(u, chatId, msgId); }
       else if (a === "bank") { await showScreen(chatId, msgId, S.bank(u)); }
       else if (a === "settings") { await showScreen(chatId, msgId, S.settings(u)); }
       else if (a === "lang") { await showScreen(chatId, msgId, S.language(u)); }
@@ -305,13 +333,14 @@ export async function handleUpdate(env, update) {
       return;
     }
     if (ns === "mode") {
-      // Ponytail/Caveman first pick an intensity; the rest apply at once.
+      // Ponytail/Caveman first pick an intensity; the rest apply at once
+      // and the Mode screen re-renders rich with the new ✓.
       if (a === "ponytail" || a === "caveman") {
         await showScreen(chatId, msgId, S.styleLevels(u, a));
       } else {
         u.bundle = a;
         await store.saveUser(u);
-        await showScreen(chatId, msgId, S.modeScreen(u));
+        await sendRichMode(u, chatId, msgId);
       }
       return;
     }
@@ -319,7 +348,7 @@ export async function handleUpdate(env, update) {
       u.bundle = a;
       u.level[a] = bArg;
       await store.saveUser(u);
-      await showScreen(chatId, msgId, S.modeScreen(u));
+      await sendRichMode(u, chatId, msgId);
       return;
     }
     if (ns === "dt") { u.mode = a; await store.saveUser(u); await showScreen(chatId, msgId, S.settings(u)); return; }
@@ -331,7 +360,7 @@ export async function handleUpdate(env, update) {
     }
     if (ns === "bank") {
       const preset = BANK.find((p) => p.id === a);
-      if (preset) await deliver(chatId, S.bankItem(u, preset));
+      if (preset) await sendRich(chatId, S.bankItemRich(u, preset), S.bankItem(u, preset), msgId);
       return;
     }
     if (ns === "res" && a === "refine") {
@@ -339,7 +368,9 @@ export async function handleUpdate(env, update) {
       if (f.lastPrompt) {
         u.flow = { name: "refine", lastIdea: f.lastIdea, lastPrompt: f.lastPrompt };
         await store.saveUser(u);
-        await showScreen(chatId, msgId, S.refineAsk(u));
+        // New message — never edit the result card itself, its prompt
+        // must stay visible in the chat (no-delete policy).
+        await showScreen(chatId, null, S.refineAsk(u));
       }
       return;
     }

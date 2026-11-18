@@ -9,6 +9,7 @@ export default {
   btn_settings: "⚙️ Ajustes",
   btn_guide: "❓ Guía",
   btn_mode: "🎛 Modo",
+  btn_detail: "🔍 Prompt detallado",
   mode_title: "🎛 Modo de generación — elige uno, da forma a todos los prompts hasta que lo cambies.",
   quick_ask: "✍️ Envía tu idea — una línea basta. Vale cualquier idioma.",
   cats_title: "🎯 ¿Qué vamos a crear?",

@@ -9,6 +9,7 @@ export default {
   btn_settings: "⚙️ Ayarlar",
   btn_guide: "❓ Rehber",
   btn_mode: "🎛 Mod",
+  btn_detail: "🔍 Ayrıntılı Prompt",
   mode_title: "🎛 Üretim modu — birini seç, değiştirene kadar tüm promptları o şekillendirir.",
   quick_ask: "✍️ Fikrini gönder — tek satır yeterli. Her dil olur.",
   cats_title: "🎯 Ne üretiyoruz?",

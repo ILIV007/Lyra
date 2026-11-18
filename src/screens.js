@@ -7,7 +7,7 @@
 // 256 chars and rejects the WHOLE message otherwise (BUTTON_COPY_TEXT_
 // INVALID) — prompts and presets are far longer. The `pre` block is the
 // copy mechanism: clients render it with a native copy affordance.
-import { compose, tx, b, i, pre, bq, btn, kb } from "./telegram.js";
+import { compose, tx, b, i, pre, bq, qp, btn, kb } from "./telegram.js";
 import { t, LANGS, LANG_NAME } from "./i18n.js";
 import { BANK, STYLE_LEVELS } from "./styles.js";
 
@@ -44,6 +44,7 @@ export function homeKeyboard(u) {
   const x = tr(u);
   return kb([
     [btn(x("btn_quick"), "nav:quick", { style: "primary" })],
+    [btn(x("btn_detail"), "nav:detail", { style: "danger" })],
     [btn(x("btn_mode"), "nav:mode"), btn(x("btn_bank"), "nav:bank")],
     [btn(x("btn_settings"), "nav:settings"), btn(x("btn_guide"), "nav:guide")],
   ]);
@@ -54,6 +55,7 @@ export function richHome(u) {
   const html =
     `<h3>🌀 ${esc(x("start_title"))}</h3>` +
     `<p>${esc(x("start_body"))}</p>` +
+    `<h4>${esc(x("settings_title"))}</h4>` +
     `<p>${esc(settingsLine(u))}</p>` +
     `<blockquote>${esc(x("home_hint"))}</blockquote>`;
   return { html, keyboard: homeKeyboard(u) };
@@ -106,19 +108,33 @@ export function question(u, idx) {
   return { text, entities, keyboard };
 }
 
-export function modeScreen(u) {
+export function modeKeyboard(u) {
   const x = tr(u);
-  const { text, entities } = compose(
-    b(x("mode_title")), tx("\n\n"), tx(settingsLine(u))
-  );
   const mark = (key) => (u.bundle === key ? "✓ " : "");
-  const keyboard = kb([
+  return kb([
     [btn(mark("standard") + x("style_standard"), "mode:standard"), btn(mark("ponytail") + x("style_ponytail"), "mode:ponytail")],
     [btn(mark("caveman") + x("style_caveman"), "mode:caveman"), btn(mark("code") + x("cat_code"), "mode:code")],
     [btn(mark("image") + x("cat_image"), "mode:image"), btn(mark("video") + x("cat_video"), "mode:video")],
     homeRow(u),
   ]);
-  return { text, entities, keyboard };
+}
+
+export function modeScreen(u) {
+  const x = tr(u);
+  const { text, entities } = compose(
+    b(x("mode_title")), tx("\n\n"), tx(settingsLine(u))
+  );
+  return { text, entities, keyboard: modeKeyboard(u) };
+}
+
+export function richMode(u) {
+  const x = tr(u);
+  const intro = x("mode_title").replace(/^🎛\s*/, "");
+  const html =
+    `<h3>${esc(x("btn_mode"))}</h3>` +
+    `<p>${esc(intro)}</p>` +
+    `<p>${esc(settingsLine(u))}</p>`;
+  return { html, keyboard: modeKeyboard(u) };
 }
 
 export function styleLevels(u, style) {
@@ -152,6 +168,15 @@ export function bankItem(u, preset) {
     [btn(x("btn_back"), "nav:bank"), btn(x("btn_home"), "nav:home")],
   ]);
   return { text, entities, keyboard };
+}
+
+export function bankItemRich(u, preset) {
+  const x = tr(u);
+  const html = `<h4>${esc(x(preset.titleKey))}</h4><pre>${esc(preset.content)}</pre>`;
+  const keyboard = kb([
+    [btn(x("btn_back"), "nav:bank"), btn(x("btn_home"), "nav:home")],
+  ]);
+  return { html, keyboard };
 }
 
 export function settings(u) {
@@ -190,7 +215,7 @@ export function resultCard(u, { idea, prompt }) {
   const { text, entities } = compose(
     b(x("result_title")), tx("\n\n"),
     i(x("result_input") + ":"), tx("\n"), bq(shownIdea, true), tx("\n\n"),
-    pre(prompt)
+    qp(prompt) // the prompt itself: quote + mono, per the owner's spec
   );
   const keyboard = kb([
     [btn(x("btn_refine"), "res:refine"), btn(x("btn_new"), "nav:quick")],

@@ -1,5 +1,37 @@
 # Changelog
 
+## v2.5.0 — 2026-11-18
+
+Owner live-review fixes + a full review/debug pass:
+
+- **No-delete policy.** Tapping Home on a result card deleted the card
+  itself (the rich-home sender removed its source message) — the owner
+  is right, that is a bug. The bot now NEVER deletes a user-visible
+  message (`deleteMessage` has zero call sites): when leaving a screen
+  behind, only its keyboard is stripped via `editMessageReplyMarkup`,
+  so texts/prompts/presets stay and stale buttons disappear. The
+  long-card path no longer deletes the placeholder either — it is
+  edited into chunk 1. Refine no longer edits the result card.
+  This reverses the v2.4 orphan-cleanup approach (deletion) in favour
+  of keyboard stripping.
+- **4096, not 4000.** Long prompts were split into two messages below
+  Telegram's real limit; splitter, delivery and the placeholder path
+  now all use 4096, so borderline prompts stay in one message.
+- **Prompts render as quote + mono:** the crafted prompt carries
+  overlapping `expandable_blockquote` + `code` entities (probed live
+  against the Bot API first — accepted).
+- **More Rich:** the Mode screen and Bank items are rich messages now
+  (Home, Guide, Mode, Bank items rich; form-like screens stay
+  editable). Home sections are separated with a settings subheading.
+- **Detailed Prompt button on Home** — red (`danger` style), next to
+  Quick Prompt; it starts the 3-question flow directly, whatever the
+  Settings depth toggle says. New `btn_detail` string in 12 locales.
+- Review pass: dead code removed from prompts.js; rich-send fallback
+  also strips the source keyboard; bot.js / i18n.js / index.js audited
+  clean.
+
+Agent: Rick
+
 ## v2.4.0 — 2026-11-18
 
 Owner live-review fixes, including the missing-prompt root cause:

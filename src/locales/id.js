@@ -9,6 +9,7 @@ export default {
   btn_settings: "⚙️ Pengaturan",
   btn_guide: "❓ Panduan",
   btn_mode: "🎛 Mode",
+  btn_detail: "🔍 Prompt Terperinci",
   mode_title: "🎛 Mode pembuatan — pilih satu, mode ini membentuk semua prompt sampai Anda mengubahnya.",
   quick_ask: "✍️ Kirim idemu — satu baris saja cukup. Bahasa apa pun bisa.",
   cats_title: "🎯 Kita mau membuat apa?",
