@@ -218,7 +218,9 @@ export function guide(u) {
   return { text, entities, keyboard: kb([homeRow(u)]) };
 }
 
-export function resultCard(u, { idea, prompt }) {
+const TIP_KEYS = ["tip_1", "tip_2", "tip_3", "tip_4", "tip_5", "tip_6", "tip_7"];
+
+export function resultCard(u, { idea, prompt, sharpen = 0 }) {
   const x = tr(u);
   const shownIdea = idea.length > 500 ? idea.slice(0, 500) + "…" : idea;
   const meta = `${bundleLabel(u)}  ·  📏 ${prompt.length.toLocaleString("en-US")}`;
@@ -228,13 +230,24 @@ export function resultCard(u, { idea, prompt }) {
     i("🎯 " + x("result_input") + ":"), tx("\n"), bq(shownIdea, true), tx("\n\n"),
     b("📋 " + x("result_prompt") + ":"), tx("\n"),
     qp(prompt), // the prompt itself: quote + mono, per the owner's spec
-    tx("\n\n"), i(x("result_hint"))
+    // Footer tip rotates by prompt count, loading-screen style.
+    tx("\n\n"), i(x(TIP_KEYS[(u.n || 0) % TIP_KEYS.length]))
   );
-  const keyboard = kb([
-    [btn(x("btn_refine"), "res:refine"), btn(x("btn_new"), "nav:quick")],
-    homeRow(u),
-  ]);
-  return { text, entities, keyboard };
+  const rows = [];
+  if (sharpen > 0) rows.push([btn(t(u.lang, "btn_sharpen_fmt", { n: sharpen }), "shrp:start", "success")]);
+  rows.push([btn(x("btn_refine"), "res:refine"), btn(x("btn_new"), "nav:quick")], homeRow(u));
+  return { text, entities, keyboard: kb(rows) };
+}
+
+// One Sharpen question with tap-to-answer option buttons. Options ride
+// in flow state; callbacks carry only indexes (64-byte limit).
+export function sharpenQuestion(u, f) {
+  const x = tr(u);
+  const q = f.questions[f.idx];
+  const { text, entities } = compose(b(`🧩 ${f.idx + 1}/${f.questions.length}`), tx("\n\n"), b(q.q));
+  const rows = q.options.map((opt, i) => [btn(opt, `ans:${f.idx}:${i}`)]);
+  rows.push([btn(x("btn_skip"), `ans:${f.idx}:skip`), btn(x("btn_cancel"), "ans:cancel")]);
+  return { text, entities, keyboard: kb(rows) };
 }
 
 export function refineAsk(u) {

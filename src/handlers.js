@@ -3,7 +3,7 @@ import { createTelegram, splitMessage, compose, tx, b, btn, kb } from "./telegra
 import { createStore, defaultUser } from "./store.js";
 import { t, guessTextLang, ANSWER_LANG_NAME } from "./i18n.js";
 import * as S from "./screens.js";
-import { buildSystem, buildUser, refineUser, parsePrompt } from "./prompts.js";
+import { buildSystem, buildUser, refineUser, parsePrompt, parseQuestions } from "./prompts.js";
 import { generate } from "./providers.js";
 import { BANK } from "./styles.js";
 
@@ -244,9 +244,14 @@ export async function handleUpdate(env, update) {
     await stopAnim();
     const baseIdea = refine ? refine.idea : idea;
     u.n += 1;
-    u.flow = { name: "done", lastIdea: baseIdea, lastPrompt: prompt };
+    // Sharpen offer: only for plain quick generations (no preset
+    // answers, not a refine) with a short, likely-vague idea, and only
+    // when the model returned a well-formed QUESTIONS block. The card
+    // is complete without it — the offer is an optional upgrade.
+    const questions = (!answers && !refine && baseIdea.length <= 140) ? parseQuestions(out.text) : null;
+    u.flow = { name: "done", lastIdea: baseIdea, lastPrompt: prompt, ...(questions ? { questions } : {}) };
     await store.saveUser(u);
-    const cardIds = await finishPlaceholder(chatId, phId, S.resultCard(u, { idea: baseIdea, prompt }));
+    const cardIds = await finishPlaceholder(chatId, phId, S.resultCard(u, { idea: baseIdea, prompt, sharpen: questions ? questions.length : 0 }));
     if (cardIds && cardIds.length) {
       // Register the card as a deliverable: it must never be deleted.
       u.keep = [...(u.keep || []), ...cardIds].slice(-12);
@@ -311,6 +316,14 @@ export async function handleUpdate(env, update) {
     }
 
     const f = u.flow || {};
+    if (f.name === "sharpen") {
+      // Typing while Sharpen questions are open cancels them silently;
+      // the text is treated as a brand-new idea below.
+      if (u.flowMsg) await deleteMenu(chatId, u.flowMsg);
+      u.flow = null;
+      u.flowMsg = null;
+      await store.saveUser(u);
+    }
     if (f.name === "bcast" && admins.includes(String(u.id))) {
       u.flow = { name: "bcast_confirm", text, cursor: 0, sent: 0 };
       await store.saveUser(u);
@@ -413,6 +426,50 @@ export async function handleUpdate(env, update) {
           u.keep = [...(u.keep || []), itemId].slice(-12);
           await store.saveUser(u);
         }
+      }
+      return;
+    }
+    if (ns === "shrp" && a === "start") {
+      const f = u.flow || {};
+      if (f.name === "done" && f.questions && f.questions.length) {
+        u.flow = { name: "sharpen", idx: 0, answers: [], idea: f.lastIdea, prompt: f.lastPrompt, questions: f.questions };
+        u.flowMsg = await showScreen(chatId, null, S.sharpenQuestion(u, u.flow));
+        await store.saveUser(u);
+      }
+      return;
+    }
+    if (ns === "ans") {
+      let f = u.flow || {};
+      // Rapid successive taps can outrun KV propagation: if this tap
+      // looks stale against the loaded record, reload ONCE and
+      // re-check before dropping it (found live in the v2.6.0 E2E —
+      // a Q2 tap arrived while the record still showed idx 0).
+      if (f.name !== "sharpen" || (a !== "cancel" && parseInt(a, 10) !== f.idx)) {
+        const fresh = await store.getUser(u.id);
+        if (fresh) { Object.assign(u, fresh); f = u.flow || {}; }
+      }
+      if (f.name !== "sharpen") return;
+      if (a === "cancel") {
+        await deleteMenu(chatId, msgId);
+        u.flow = { name: "done", lastIdea: f.idea, lastPrompt: f.prompt };
+        u.flowMsg = null;
+        await store.saveUser(u);
+        return;
+      }
+      const qIdx = parseInt(a, 10);
+      if (Number.isNaN(qIdx) || qIdx !== f.idx) return; // stale tap on an older question
+      f.answers[f.idx] = bArg === "skip" ? "—" : (f.questions[f.idx].options[parseInt(bArg, 10)] || "—");
+      f.idx += 1;
+      if (f.idx >= f.questions.length) {
+        const answers = f.answers.filter((x) => x && x !== "—");
+        const idea = f.idea;
+        u.flow = null;
+        await store.saveUser(u);
+        await runGeneration(u, chatId, { idea, answers });
+      } else {
+        await store.saveUser(u);
+        u.flowMsg = await showScreen(chatId, msgId, S.sharpenQuestion(u, f));
+        await store.saveUser(u);
       }
       return;
     }

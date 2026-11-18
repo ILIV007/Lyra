@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { richHome, home, settings, settingsLine, modeScreen, resultCard, bankItem, quickAsk, quickAskDetailed } from "../src/screens.js";
+import { richHome, home, settings, settingsLine, modeScreen, resultCard, bankItem, quickAsk, quickAskDetailed, sharpenQuestion } from "../src/screens.js";
+import { parseQuestions } from "../src/prompts.js";
 import { splitMessage } from "../src/telegram.js";
 import { BANK } from "../src/styles.js";
 
@@ -38,7 +39,7 @@ test("result card prompt is quote + mono (overlapping entities)", () => {
   assert.ok(types.includes("code"), "prompt must be mono");
   // Designed card: meta line (mode + length) and the copy tip are present.
   assert.ok(card.text.includes("📏"), "meta line shows prompt length");
-  assert.ok(card.text.includes("long-press"), "copy tip present");
+  assert.ok(card.text.includes("Hold the prompt block"), "rotating tip present (n=0 → tip_1)");
 });
 
 test("a 4050-char card stays ONE message at the 4096 limit", () => {
@@ -99,4 +100,35 @@ test("bank has real ready-to-use presets, not only style meta-prompts", () => {
   for (const id of ["code_review", "debug", "eli5", "email_pro", "study", "image_photo", "summarize"]) {
     assert.ok(BANK.some((p) => p.id === id), `missing preset ${id}`);
   }
+});
+
+test("tip rotates by prompt count, loading-screen style", () => {
+  const c0 = resultCard({ ...user, n: 7 }, { idea: "x", prompt: "p".repeat(50) });
+  assert.ok(c0.text.includes("Hold the prompt block"), "n=7 → tip_1 again");
+  const c1 = resultCard({ ...user, n: 1 }, { idea: "x", prompt: "p".repeat(50) });
+  assert.ok(c1.text.includes("/mode switches style"), "n=1 → tip_2");
+});
+
+test("sharpen: card row only when questions exist; question screen is tap-only", () => {
+  const plain = resultCard({ ...user, n: 0 }, { idea: "x", prompt: "p".repeat(50) });
+  assert.ok(!JSON.stringify(plain.keyboard).includes("shrp:start"), "no sharpen row by default");
+  const sharp = resultCard({ ...user, n: 0 }, { idea: "x", prompt: "p".repeat(50), sharpen: 2 });
+  const kb = JSON.stringify(sharp.keyboard);
+  assert.ok(kb.includes("shrp:start") && kb.includes("Sharpen · 2 quick questions"), "green sharpen row with count");
+  const qs = sharpenQuestion({ ...user }, { idx: 0, questions: [{ q: "Who is it for?", options: ["Beginners", "Pros"] }, { q: "Format?", options: ["List", "Essay"] }] });
+  assert.ok(qs.text.includes("1/2") && qs.text.includes("Who is it for?"));
+  const qkb = JSON.stringify(qs.keyboard);
+  assert.ok(qkb.includes("ans:0:0") && qkb.includes("ans:0:1") && qkb.includes("ans:0:skip") && qkb.includes("ans:cancel"), "index callbacks + skip/cancel");
+});
+
+test("parseQuestions: strict, capped, defensive", () => {
+  const good = "<PROMPT>x</PROMPT>\n<QUESTIONS>\nQ: Who is it for?\n- Beginners\n- Pros\nQ: Tone?\n- Formal\n- Casual\n- Fun\n</QUESTIONS>";
+  const qs = parseQuestions(good);
+  assert.equal(qs.length, 2);
+  assert.equal(qs[0].options.length, 2);
+  assert.equal(qs[1].options.length, 3);
+  assert.equal(parseQuestions("<PROMPT>x</PROMPT>"), null, "no block → null");
+  assert.equal(parseQuestions("<QUESTIONS>\nQ: Lonely?\n</QUESTIONS>"), null, "question without options → null");
+  const many = "<QUESTIONS>\n" + "Q: A?\n- 1\n- 2\n".repeat(4) + "</QUESTIONS>";
+  assert.equal(parseQuestions(many).length, 2, "capped at 2 questions");
 });

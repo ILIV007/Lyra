@@ -38,9 +38,10 @@ export function buildSystem({ platform = "chatgpt", style = "standard", level, a
   if (overlay) parts.push(overlay);
   parts.push(
     `OUTPUT CONTRACT — follow exactly:\n` +
-    `- Reply with ONLY the finished prompt wrapped in <PROMPT>...</PROMPT> tags. No introduction, no explanation, no analysis outside the tags.\n` +
+    `- Reply with ONLY the finished prompt wrapped in <PROMPT>...</PROMPT> tags, plus the optional <QUESTIONS> block described below. No introduction, no explanation, no analysis outside the tags.\n` +
     `- The prompt inside the tags is ALWAYS in English, even if the user's idea is written in another language. Translate and transpose the idea; do not answer in the idea's language.\n` +
-    `- Inside the prompt, instruct the target AI to produce its answer in ${answerLang} (unless the task itself dictates another language, e.g. "write a poem in French").`
+    `- Inside the prompt, instruct the target AI to produce its answer in ${answerLang} (unless the task itself dictates another language, e.g. "write a poem in French").\n` +
+    `- FOLLOW-UP QUESTIONS — if the idea is very short or generic, or a missing choice (audience, purpose, format, tone) would materially change the prompt, you MUST append a <QUESTIONS> block after </PROMPT>, in EXACTLY this format, in the user's own language:\n<QUESTIONS>\nQ: <one short question>\n- <option, at most 7 words>\n- <option>\n- <option>\n</QUESTIONS>\nAt most 2 questions, 2-4 options each. Only omit the block when the idea already pins down its subject, audience and purpose.`
   );
   return parts.join("\n\n");
 }
@@ -75,3 +76,29 @@ export function parsePrompt(raw) {
 }
 
 export const QUESTION_KEYS = ["q1", "q2", "q3"];
+
+// Parses the model's OPTIONAL <QUESTIONS> block (post-generation Sharpen
+// offer). Strict and defensive by design: anything malformed returns
+// null and the user simply never sees the offer — the prompt itself is
+// never affected. Returns at most 2 questions with 2-4 options each.
+export function parseQuestions(raw) {
+  if (!raw) return null;
+  const m = raw.match(/<QUESTIONS>([\s\S]*?)<\/QUESTIONS>/i);
+  if (!m) return null;
+  const qs = [];
+  let cur = null;
+  for (const line of m[1].split("\n").map((s) => s.trim()).filter(Boolean)) {
+    if (/^Q\s*[:：]/i.test(line)) {
+      cur = { q: line.replace(/^Q\s*[:：]\s*/i, "").slice(0, 120), options: [] };
+      qs.push(cur);
+    } else if (/^[-•*]/.test(line) && cur) {
+      const opt = line.replace(/^[-•*]\s*/, "").slice(0, 64);
+      if (opt) cur.options.push(opt);
+    }
+  }
+  const valid = qs
+    .filter((q) => q.q && q.options.length >= 2)
+    .slice(0, 2)
+    .map((q) => ({ q: q.q, options: q.options.slice(0, 4) }));
+  return valid.length ? valid : null;
+}
