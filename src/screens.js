@@ -1,12 +1,14 @@
 // screens.js — every screen is a pure function of the user record.
-// Returns { text, entities, keyboard } built with entity segments.
+// Regular screens return { text, entities, keyboard } (entity-based,
+// edit-in-place). Home and Guide are RICH messages (richHome/richGuide
+// return HTML) — they are read-once surfaces, sent fresh each time.
 import { compose, tx, b, i, pre, bq, btn, copyBtn, kb } from "./telegram.js";
 import { t, LANGS, LANG_NAME } from "./i18n.js";
 import { BANK, STYLE_LEVELS } from "./styles.js";
 
 const tr = (u) => (key, vars) => t(u.lang, key, vars);
 const homeRow = (u) => [btn(tr(u)("btn_home"), "nav:home")];
-const backHome = (u) => [btn(tr(u)("btn_back"), "nav:home"), btn(tr(u)("btn_home"), "nav:home")];
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 function styleLabel(u) {
   const x = tr(u);
@@ -15,32 +17,76 @@ function styleLabel(u) {
   return x("style_standard");
 }
 
+function platformLabel(u) {
+  return { chatgpt: "ChatGPT", claude: "Claude", gemini: "Gemini", code: "💻 Code", image: "🖼 Image", video: "🎬 Video" }[u.platform] || "ChatGPT";
+}
+
+function modeLabel(u) {
+  return u.mode === "detail" ? tr(u)("mode_detail") : tr(u)("mode_basic");
+}
+
+// ---- rich surfaces ----------------------------------------------------------
+
+export function homeKeyboard(u) {
+  const x = tr(u);
+  return kb([
+    [btn(x("btn_quick"), "nav:quick", { style: "primary" })],
+    [btn(x("btn_bank"), "nav:bank"), btn(x("btn_settings"), "nav:settings")],
+    [btn(x("btn_guide"), "nav:guide")],
+  ]);
+}
+
+export function richHome(u) {
+  const x = tr(u);
+  const rows = [
+    ["🌐", LANG_NAME[u.lang]],
+    ["🎨", styleLabel(u)],
+    ["🤖", platformLabel(u)],
+    ["🎚", modeLabel(u)],
+  ].map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join("");
+  const html =
+    `<h3>${esc(x("start_title"))}</h3>` +
+    `<p>${esc(x("start_body"))}</p>` +
+    `<table>${rows}</table>` +
+    `<p><i>${esc(x("home_hint"))}</i></p>`;
+  return { html, keyboard: homeKeyboard(u) };
+}
+
+export function richGuide(u) {
+  const x = tr(u);
+  const body = x("guide_body");
+  const parts = [];
+  for (const para of body.split(/\n{2,}/)) {
+    const lines = para.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (lines.length && lines.every((l) => l.startsWith("•"))) {
+      parts.push(`<ul>${lines.map((l) => `<li>${esc(l.replace(/^•\s*/, ""))}</li>`).join("")}</ul>`);
+    } else if (lines.length) {
+      parts.push(`<p>${esc(lines.join(" "))}</p>`);
+    }
+  }
+  const html = `<h3>${esc(x("guide_title"))}</h3>` + parts.join("");
+  return { html, keyboard: kb([homeRow(u)]) };
+}
+
+// Plain fallback for Home if a client/API rejects the rich payload.
 export function home(u) {
   const x = tr(u);
   const { text, entities } = compose(
     b(x("start_title")), tx("\n\n"), tx(x("start_body")), tx("\n\n"), i(x("home_hint"))
   );
-  const keyboard = kb([
-    [btn(`🌐 ${LANG_NAME[u.lang]}`, "nav:lang"), btn(styleLabel(u), "nav:styles"), btn(u.mode === "detail" ? "🔎 Detail" : "⚡ Basic", "nav:settings")],
-    [btn(x("btn_quick"), "nav:quick", { style: "primary" }), btn(x("btn_cats"), "nav:cats")],
-    [btn(x("btn_bank"), "nav:bank"), btn(x("btn_styles"), "nav:styles")],
-    [btn(x("btn_settings"), "nav:settings"), btn(x("btn_guide"), "nav:guide")],
-  ]);
-  return { text, entities, keyboard };
+  return { text, entities, keyboard: homeKeyboard(u) };
 }
+
+// ---- regular screens ----------------------------------------------------------
 
 export function quickAsk(u) {
   const x = tr(u);
+  const cat = (u.flow && u.flow.cat) || "general";
   const { text, entities } = compose(b(x("btn_quick")), tx("\n\n"), tx(x("quick_ask")));
-  return { text, entities, keyboard: kb([homeRow(u)]) };
-}
-
-export function categories(u) {
-  const x = tr(u);
-  const { text, entities } = compose(b(x("cats_title")));
+  const mark = (c) => (cat === c ? "✓ " : "");
   const keyboard = kb([
-    [btn(x("cat_general"), "cat:general"), btn(x("cat_code"), "cat:code")],
-    [btn(x("cat_image"), "cat:image"), btn(x("cat_video"), "cat:video")],
+    [btn(mark("general") + x("cat_general"), "cat:general"), btn(mark("code") + x("cat_code"), "cat:code")],
+    [btn(mark("image") + x("cat_image"), "cat:image"), btn(mark("video") + x("cat_video"), "cat:video")],
     homeRow(u),
   ]);
   return { text, entities, keyboard };
@@ -57,19 +103,6 @@ export function question(u, idx) {
   return { text, entities, keyboard };
 }
 
-export function styles(u) {
-  const x = tr(u);
-  const { text, entities } = compose(b(x("btn_styles")), tx("\n\n"), tx(x("styles_title")));
-  const mark = (s) => (u.style === s ? "✓ " : "");
-  const keyboard = kb([
-    [btn(mark("standard") + x("style_standard"), "style:standard")],
-    [btn(mark("ponytail") + x("style_ponytail"), "style:ponytail")],
-    [btn(mark("caveman") + x("style_caveman"), "style:caveman")],
-    backHome(u),
-  ]);
-  return { text, entities, keyboard };
-}
-
 export function styleLevels(u, style) {
   const x = tr(u);
   const name = style === "ponytail" ? x("style_ponytail") : x("style_caveman");
@@ -79,7 +112,7 @@ export function styleLevels(u, style) {
   const rows = STYLE_LEVELS[style].map((lv) => [
     btn((lv === cur ? "✓ " : "") + x(lvlKey[lv]), `lvl:${style}:${lv}`),
   ]);
-  rows.push([btn(x("btn_back"), "nav:styles"), btn(x("btn_home"), "nav:home")]);
+  rows.push([btn(x("btn_back"), "nav:settings"), btn(x("btn_home"), "nav:home")]);
   return { text, entities, keyboard: kb(rows) };
 }
 
@@ -109,14 +142,19 @@ const PLATFORMS = [
 export function settings(u) {
   const x = tr(u);
   const { text, entities } = compose(
-    b(x("settings_title")), tx("\n\n"), tx(x("set_platform")), tx("\n"), tx(x("set_mode"))
+    b(x("settings_title")), tx("\n\n"),
+    tx(x("set_platform")), tx("\n"), tx(x("set_mode")), tx("\n"), tx(x("btn_styles"))
   );
   const prow = PLATFORMS.map(([k, label]) => btn((u.platform === k ? "✓ " : "") + label, `plat:${k}`));
+  const smark = (s) => (u.style === s ? "✓ " : "");
   const keyboard = kb([
     prow.slice(0, 3),
     prow.slice(3),
     [btn((u.mode === "basic" ? "✓ " : "") + x("mode_basic"), "mode:basic"),
      btn((u.mode === "detail" ? "✓ " : "") + x("mode_detail"), "mode:detail")],
+    [btn(smark("standard") + x("style_standard"), "style:standard"),
+     btn(smark("ponytail") + x("style_ponytail"), "style:ponytail"),
+     btn(smark("caveman") + x("style_caveman"), "style:caveman")],
     [btn(x("set_lang"), "nav:lang"), btn(x("btn_home"), "nav:home")],
   ]);
   return { text, entities, keyboard };
@@ -149,7 +187,7 @@ export function resultCard(u, { idea, prompt }) {
   );
   const keyboard = kb([
     [copyBtn(x("btn_copy"), prompt), btn(x("btn_refine"), "res:refine")],
-    [btn(x("btn_restyle"), "nav:styles"), btn(x("btn_new"), "nav:quick"), btn(x("btn_home"), "nav:home")],
+    [btn(x("btn_new"), "nav:quick"), btn(x("btn_home"), "nav:home")],
   ]);
   return { text, entities, keyboard };
 }

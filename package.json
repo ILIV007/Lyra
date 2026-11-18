@@ -1,1 +1,1 @@
-{"description":"Lyra — Telegram Prompt Master bot on Cloudflare Workers (4-D prompt optimizer, 12 UI languages, Ponytail/Caveman styles)","license":"MIT","main":"src/index.js","name":"lyra-prompt-master","scripts":{"test":"node --test \"test/*.test.js\""},"type":"module","version":"2.0.0"}
+{"description":"Lyra — Telegram Prompt Master bot on Cloudflare Workers (4-D prompt optimizer, 12 UI languages, Ponytail/Caveman styles)","license":"MIT","main":"src/index.js","name":"lyra-prompt-master","scripts":{"test":"node --test \"test/*.test.js\""},"type":"module","version":"2.1.0"}
