@@ -107,7 +107,7 @@ export async function handleUpdate(env, update) {
       : buildUser({ idea, category: cat, answers });
     let out;
     try {
-      out = await generate(env, { system, user: userMsg, maxTokens: 1400 });
+      out = await generate(env, { system, user: userMsg, maxTokens: 1400, validate: (txt) => !!parsePrompt(txt) });
     } catch (e) {
       console.error("generate failed:", String(e && e.message || e));
       await sendText(chatId, t(u.lang, "err_generic"));
@@ -369,7 +369,7 @@ export async function handleUpdate(env, update) {
           if (!u) u = defaultUser(iq.from.id);
           const answerLang = ANSWER_LANG_NAME[guessTextLang(query, lang)] || "English";
           const system = buildSystem({ platform: u.platform, style: u.style, level: u.level[u.style], answerLang });
-          const out = await generate(env, { system, user: buildUser({ idea: query, category: "general" }), fast: true, maxTokens: 900 });
+          const out = await generate(env, { system, user: buildUser({ idea: query, category: "general" }), fast: true, maxTokens: 900, validate: (txt) => !!parsePrompt(txt) });
           const prompt = parsePrompt(out.text);
           if (prompt) {
             results.push({
