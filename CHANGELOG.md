@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.6.0 — 2026-11-18
+
+- **Sharpen: optional follow-up questions after a Quick prompt.**
+  Architecture checkup first (owner's request): the result card is
+  complete on its own; when a short/vague idea leaves real choices
+  open, the model may append a strict `<QUESTIONS>` block (max 2
+  questions, tap-only option buttons, Skip/Cancel everywhere). The
+  card gains one green "🧩 Sharpen" row; answering regenerates a
+  sharper prompt as a new card through the same answers machinery the
+  Detailed flow already used. One sharpen per idea, stale-tap guard
+  via question indexes, malformed blocks are dropped silently, and
+  typing mid-flow cancels quietly. Detailed/Refine/inline never offer
+  it — confusion surface stays at zero for everyone else.
+- **Result-card tips rotate loading-screen style:** the old static
+  tip is gone; a pool of 7 one-line tips (localised x12) cycles by
+  prompt count — copy hint, /mode, Bank, Detailed, Refine, language
+  behaviour, inline usage.
+
 ## v2.5.0 — 2026-11-18
 
 Owner live-review fixes + a full review/debug pass:
