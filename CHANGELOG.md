@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.3.0 — 2026-11-18
+
+Owner live-review fixes:
+
+- **The draft preview is gone.** `sendMessageDraft` turned out to be the
+  "empty live text that deletes itself": drafts are ephemeral by design,
+  render as an empty live bubble on some clients, and auto-vanish when
+  the real message lands. Generation is back to the v1 way the owner
+  prefers — a real "⏳ Writing your prompt…" placeholder message that is
+  **edited in place** into the result card (or into the error text on
+  failure). New `generating` string in all 12 locales.
+- **/start redesigned.** The rich Home drops the clunky emoji table:
+  title, one short paragraph, the current setup as a single line
+  (🌐 language · style · platform · mode), the hint as a blockquote,
+  and a two-row keyboard (primary action + Bank/Settings/Guide row).
+- **Settings screen decluttered** the same way: title + the one-line
+  state summary; the buttons speak for themselves.
+
+Agent: Rick
+
 ## v2.2.0 — 2026-11-18
 
 - **Workers AI is a real fallback chain now** (owner's request). Quality

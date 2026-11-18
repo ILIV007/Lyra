@@ -21,6 +21,7 @@ export default {
   btn_skip: "⏭ Lewati",
   result_title: "✅ Promptmu sudah siap",
   result_input: "Idemu",
+  generating: "⏳ Menulis prompt Anda…",
   btn_copy: "📋 Salin prompt",
   btn_refine: "🔁 Sempurnakan",
   btn_restyle: "🧰 Ganti gaya",

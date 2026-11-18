@@ -21,6 +21,7 @@ export default {
   btn_skip: "⏭ رد کن",
   result_title: "✅ پرامپتت آماده‌ست",
   result_input: "ایده‌ی تو",
+  generating: "⏳ در حال نوشتن پرامپتت…",
   btn_copy: "📋 کپی پرامپت",
   btn_refine: "🔁 اصلاح",
   btn_restyle: "🧰 تغییر سبک",

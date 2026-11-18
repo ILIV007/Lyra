@@ -21,6 +21,7 @@ export default {
   btn_skip: "⏭ Пропустить",
   result_title: "✅ Ваш промпт готов",
   result_input: "Ваша идея",
+  generating: "⏳ Пишу ваш промпт…",
   btn_copy: "📋 Копировать промпт",
   btn_refine: "🔁 Доработать",
   btn_restyle: "🧰 Сменить стиль",

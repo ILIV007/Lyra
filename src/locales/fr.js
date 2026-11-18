@@ -21,6 +21,7 @@ export default {
   btn_skip: "⏭ Passer",
   result_title: "✅ Votre prompt est prêt",
   result_input: "Votre idée",
+  generating: "⏳ Rédaction de votre prompt…",
   btn_copy: "📋 Copier le prompt",
   btn_refine: "🔁 Affiner",
   btn_restyle: "🧰 Changer de style",
