@@ -2,7 +2,7 @@
 // No debug endpoints (v1 shipped open /debug/* routes; v2 has none).
 import { processUpdate } from "./bot.js";
 
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 
 export default {
   async fetch(request, env, ctx) {

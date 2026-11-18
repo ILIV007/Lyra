@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.2.0 — 2026-11-18
+
+- **Workers AI is a real fallback chain now** (owner's request). Quality
+  mode walks 5 models in order — llama-3.3-70b fp8-fast →
+  llama-3.1-70b fp8-fast → llama-4-scout → mistral-small-3.1-24b →
+  llama-3.1-8b — and inline/fast mode walks its own 4-model chain.
+  The OpenRouter chain runs after Workers AI, once its key is set.
+- Every chain model was verified live on the account before inclusion;
+  gemma-3-12b (403 here) and the gpt-oss reasoning models (empty
+  `response`) are deliberately excluded.
+- A model fails on error, per-attempt timeout (30s quality / 20s fast),
+  empty output, **or unparseable output**: `generate()` now accepts a
+  `validate` callback, so a weak fallback model that ignores the output
+  format moves the chain on instead of failing the user's request.
+- Chain behaviour is covered by unit tests (order, empty-output,
+  validation fallthrough, fast chain, all-fail).
+
+Agent: Rick
+
 ## v2.1.0 — 2026-11-18
 
 Polish pass from the first live review (all changes requested by the owner):
