@@ -21,6 +21,7 @@ export default {
   btn_skip: "⏭ Überspringen",
   result_title: "✅ Dein Prompt ist fertig",
   result_input: "Deine Idee",
+  generating: "⏳ Dein Prompt wird geschrieben…",
   btn_copy: "📋 Prompt kopieren",
   btn_refine: "🔁 Verfeinern",
   btn_restyle: "🧰 Stil wechseln",

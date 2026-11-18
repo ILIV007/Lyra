@@ -21,6 +21,7 @@ export default {
   btn_skip: "⏭ تخطي",
   result_title: "✅ البرومبت جاهز",
   result_input: "فكرتك",
+  generating: "⏳ أكتب الموجّه الخاص بك…",
   btn_copy: "📋 نسخ البرومبت",
   btn_refine: "🔁 تحسين",
   btn_restyle: "🧰 تغيير الأسلوب",

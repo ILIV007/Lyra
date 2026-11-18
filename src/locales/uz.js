@@ -21,6 +21,7 @@ export default {
   btn_skip: "⏭ O'tkazib yuborish",
   result_title: "✅ Promptingiz tayyor",
   result_input: "G'oyangiz",
+  generating: "⏳ Promptingiz yozilmoqda…",
   btn_copy: "📋 Promptni nusxalash",
   btn_refine: "🔁 Takomillashtirish",
   btn_restyle: "🧰 Uslubni o'zgartirish",

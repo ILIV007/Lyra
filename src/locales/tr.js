@@ -21,6 +21,7 @@ export default {
   btn_skip: "⏭ Atla",
   result_title: "✅ Promptun hazır",
   result_input: "Fikrin",
+  generating: "⏳ Promptun yazılıyor…",
   btn_copy: "📋 Promptu kopyala",
   btn_refine: "🔁 İyileştir",
   btn_restyle: "🧰 Stili değiştir",

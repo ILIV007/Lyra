@@ -31,24 +31,23 @@ export function homeKeyboard(u) {
   const x = tr(u);
   return kb([
     [btn(x("btn_quick"), "nav:quick", { style: "primary" })],
-    [btn(x("btn_bank"), "nav:bank"), btn(x("btn_settings"), "nav:settings")],
-    [btn(x("btn_guide"), "nav:guide")],
+    [btn(x("btn_bank"), "nav:bank"), btn(x("btn_settings"), "nav:settings"), btn(x("btn_guide"), "nav:guide")],
   ]);
+}
+
+// One compact line summarising the current setup — used on Home (rich and
+// plain) and on the Settings screen instead of bulky tables/legends.
+export function settingsLine(u) {
+  return [`🌐 ${LANG_NAME[u.lang]}`, styleLabel(u), platformLabel(u), modeLabel(u)].join("  ·  ");
 }
 
 export function richHome(u) {
   const x = tr(u);
-  const rows = [
-    ["🌐", LANG_NAME[u.lang]],
-    ["🎨", styleLabel(u)],
-    ["🤖", platformLabel(u)],
-    ["🎚", modeLabel(u)],
-  ].map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join("");
   const html =
-    `<h3>${esc(x("start_title"))}</h3>` +
+    `<h3>🌀 ${esc(x("start_title"))}</h3>` +
     `<p>${esc(x("start_body"))}</p>` +
-    `<table>${rows}</table>` +
-    `<p><i>${esc(x("home_hint"))}</i></p>`;
+    `<p>${esc(settingsLine(u))}</p>` +
+    `<blockquote>${esc(x("home_hint"))}</blockquote>`;
   return { html, keyboard: homeKeyboard(u) };
 }
 
@@ -72,7 +71,8 @@ export function richGuide(u) {
 export function home(u) {
   const x = tr(u);
   const { text, entities } = compose(
-    b(x("start_title")), tx("\n\n"), tx(x("start_body")), tx("\n\n"), i(x("home_hint"))
+    b("🌀 " + x("start_title")), tx("\n\n"), tx(x("start_body")), tx("\n\n"),
+    tx(settingsLine(u)), tx("\n\n"), i(x("home_hint"))
   );
   return { text, entities, keyboard: homeKeyboard(u) };
 }
@@ -142,8 +142,7 @@ const PLATFORMS = [
 export function settings(u) {
   const x = tr(u);
   const { text, entities } = compose(
-    b(x("settings_title")), tx("\n\n"),
-    tx(x("set_platform")), tx("\n"), tx(x("set_mode")), tx("\n"), tx(x("btn_styles"))
+    b(x("settings_title")), tx("\n\n"), tx(settingsLine(u))
   );
   const prow = PLATFORMS.map(([k, label]) => btn((u.platform === k ? "✓ " : "") + label, `plat:${k}`));
   const smark = (s) => (u.style === s ? "✓ " : "");

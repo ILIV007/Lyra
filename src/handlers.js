@@ -90,11 +90,41 @@ export async function handleUpdate(env, update) {
     return ["code", "image", "video"].includes(cat) ? cat : u.platform;
   }
 
+  // The generation UX is a REAL message that lives: a "writing…" placeholder
+  // is sent first and then edited in place into the result card (the v1 way,
+  // which the owner prefers). No sendMessageDraft — drafts are ephemeral,
+  // render as an empty live bubble on some clients and vanish on their own.
+  async function finishPlaceholder(chatId, phId, screen) {
+    if (phId && screen.text.length <= 4000) {
+      try {
+        await tg.call("editMessageText", {
+          chat_id: chatId, message_id: phId,
+          text: screen.text, entities: screen.entities, reply_markup: screen.keyboard,
+        });
+        return;
+      } catch { /* fall through to a fresh card */ }
+    }
+    if (phId) { try { await tg.call("deleteMessage", { chat_id: chatId, message_id: phId }); } catch { /* gone */ } }
+    await deliver(chatId, screen);
+  }
+
+  async function failPlaceholder(chatId, phId, text) {
+    if (phId) {
+      try { await tg.call("editMessageText", { chat_id: chatId, message_id: phId, text }); return; } catch { /* send fresh */ }
+    }
+    await sendText(chatId, text);
+  }
+
   async function runGeneration(u, chatId, { idea, cat = "general", answers = null, refine = null }) {
     if (!(await store.rateOk(u.id))) {
       await sendText(chatId, t(u.lang, "err_rate"));
       return;
     }
+    let phId = null;
+    try {
+      const ph = await tg.call("sendMessage", { chat_id: chatId, text: t(u.lang, "generating") });
+      phId = ph && ph.message_id;
+    } catch { /* placeholder is a nicety, generation continues */ }
     const answerLang = ANSWER_LANG_NAME[guessTextLang(idea, u.lang)] || "English";
     const system = buildSystem({
       platform: platformFor(u, cat),
@@ -110,27 +140,19 @@ export async function handleUpdate(env, update) {
       out = await generate(env, { system, user: userMsg, maxTokens: 1400, validate: (txt) => !!parsePrompt(txt) });
     } catch (e) {
       console.error("generate failed:", String(e && e.message || e));
-      await sendText(chatId, t(u.lang, "err_generic"));
+      await failPlaceholder(chatId, phId, t(u.lang, "err_generic"));
       return;
     }
     const prompt = parsePrompt(out.text);
     if (!prompt) {
-      await sendText(chatId, t(u.lang, "err_generic"));
+      await failPlaceholder(chatId, phId, t(u.lang, "err_generic"));
       return;
     }
     const baseIdea = refine ? refine.idea : idea;
     u.n += 1;
     u.flow = { name: "done", lastIdea: baseIdea, lastPrompt: prompt };
     await store.saveUser(u);
-    // Modern touch: ephemeral draft preview, then the durable result card.
-    try {
-      await tg.call("sendMessageDraft", {
-        chat_id: chatId,
-        draft_id: (Date.now() % 2000000000) + 1,
-        text: prompt.slice(0, 4000),
-      });
-    } catch { /* drafts unsupported in some clients — card still lands */ }
-    await deliver(chatId, S.resultCard(u, { idea: baseIdea, prompt }));
+    await finishPlaceholder(chatId, phId, S.resultCard(u, { idea: baseIdea, prompt }));
   }
 
   async function startIdeaFlow(u, chatId, msgId, cat) {
