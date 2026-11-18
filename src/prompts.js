@@ -52,9 +52,6 @@ export function buildUser({ idea, category, answers }) {
     s += `\n\nCLARIFYING ANSWERS (from the user, in their language):\n` +
       answers.map((a, n) => `${n + 1}. ${a}`).join("\n");
   }
-  if (answers === null) {
-    // Refine flow marker is handled by caller appending instructions.
-  }
   return s;
 }
 

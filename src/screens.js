@@ -7,7 +7,7 @@
 // 256 chars and rejects the WHOLE message otherwise (BUTTON_COPY_TEXT_
 // INVALID) — prompts and presets are far longer. The `pre` block is the
 // copy mechanism: clients render it with a native copy affordance.
-import { compose, tx, b, i, pre, bq, btn, kb } from "./telegram.js";
+import { compose, tx, b, i, pre, bq, qp, btn, kb } from "./telegram.js";
 import { t, LANGS, LANG_NAME } from "./i18n.js";
 import { BANK, STYLE_LEVELS } from "./styles.js";
 
@@ -34,8 +34,9 @@ function detailLabel(u) {
 }
 
 // One compact line summarising the current setup — Home, Mode, Settings.
+// One emoji per fact, no stacking (bundleLabel carries its own icon).
 export function settingsLine(u) {
-  return [`🌐 ${LANG_NAME[u.lang]}`, `🎛 ${bundleLabel(u)}`, detailLabel(u)].join("  ·  ");
+  return [`🌐 ${LANG_NAME[u.lang]}`, bundleLabel(u), detailLabel(u)].join("  ·  ");
 }
 
 // ---- rich surfaces ----------------------------------------------------------
@@ -44,6 +45,7 @@ export function homeKeyboard(u) {
   const x = tr(u);
   return kb([
     [btn(x("btn_quick"), "nav:quick", { style: "primary" })],
+    [btn(x("btn_detail"), "nav:detail", { style: "danger" })],
     [btn(x("btn_mode"), "nav:mode"), btn(x("btn_bank"), "nav:bank")],
     [btn(x("btn_settings"), "nav:settings"), btn(x("btn_guide"), "nav:guide")],
   ]);
@@ -54,6 +56,7 @@ export function richHome(u) {
   const html =
     `<h3>🌀 ${esc(x("start_title"))}</h3>` +
     `<p>${esc(x("start_body"))}</p>` +
+    `<h4>${esc(x("settings_title"))}</h4>` +
     `<p>${esc(settingsLine(u))}</p>` +
     `<blockquote>${esc(x("home_hint"))}</blockquote>`;
   return { html, keyboard: homeKeyboard(u) };
@@ -87,13 +90,21 @@ export function home(u) {
 
 // ---- regular screens ----------------------------------------------------------
 
-export function quickAsk(u) {
+// Locale ask-strings open with their own emoji; the screen header already
+// carries one, so the body's leading emoji is stripped (no duplicates).
+const stripLeadEmoji = (s) => s.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, "");
+
+function askScreen(u, detailed) {
   const x = tr(u);
   const { text, entities } = compose(
-    b(x("btn_quick")), tx("\n\n"), tx(x("quick_ask")), tx("\n\n"), i(settingsLine(u))
+    b(detailed ? x("btn_detail") : x("btn_quick")), tx("\n\n"),
+    tx(stripLeadEmoji(x("quick_ask"))), tx("\n\n"), i(settingsLine(u))
   );
   return { text, entities, keyboard: kb([homeRow(u)]) };
 }
+
+export function quickAsk(u) { return askScreen(u, false); }
+export function quickAskDetailed(u) { return askScreen(u, true); }
 
 export function question(u, idx) {
   const x = tr(u);
@@ -106,19 +117,33 @@ export function question(u, idx) {
   return { text, entities, keyboard };
 }
 
-export function modeScreen(u) {
+export function modeKeyboard(u) {
   const x = tr(u);
-  const { text, entities } = compose(
-    b(x("mode_title")), tx("\n\n"), tx(settingsLine(u))
-  );
   const mark = (key) => (u.bundle === key ? "✓ " : "");
-  const keyboard = kb([
+  return kb([
     [btn(mark("standard") + x("style_standard"), "mode:standard"), btn(mark("ponytail") + x("style_ponytail"), "mode:ponytail")],
     [btn(mark("caveman") + x("style_caveman"), "mode:caveman"), btn(mark("code") + x("cat_code"), "mode:code")],
     [btn(mark("image") + x("cat_image"), "mode:image"), btn(mark("video") + x("cat_video"), "mode:video")],
     homeRow(u),
   ]);
-  return { text, entities, keyboard };
+}
+
+export function modeScreen(u) {
+  const x = tr(u);
+  const { text, entities } = compose(
+    b(x("mode_title")), tx("\n\n"), tx(settingsLine(u))
+  );
+  return { text, entities, keyboard: modeKeyboard(u) };
+}
+
+export function richMode(u) {
+  const x = tr(u);
+  const intro = x("mode_title").replace(/^🎛\s*/, "");
+  const html =
+    `<h3>${esc(x("btn_mode"))}</h3>` +
+    `<p>${esc(intro)}</p>` +
+    `<p>${esc(settingsLine(u))}</p>`;
+  return { html, keyboard: modeKeyboard(u) };
 }
 
 export function styleLevels(u, style) {
@@ -154,6 +179,15 @@ export function bankItem(u, preset) {
   return { text, entities, keyboard };
 }
 
+export function bankItemRich(u, preset) {
+  const x = tr(u);
+  const html = `<h4>${esc(x(preset.titleKey))}</h4><pre>${esc(preset.content)}</pre>`;
+  const keyboard = kb([
+    [btn(x("btn_back"), "nav:bank"), btn(x("btn_home"), "nav:home")],
+  ]);
+  return { html, keyboard };
+}
+
 export function settings(u) {
   const x = tr(u);
   const { text, entities } = compose(
@@ -187,10 +221,14 @@ export function guide(u) {
 export function resultCard(u, { idea, prompt }) {
   const x = tr(u);
   const shownIdea = idea.length > 500 ? idea.slice(0, 500) + "…" : idea;
+  const meta = `${bundleLabel(u)}  ·  📏 ${prompt.length.toLocaleString("en-US")}`;
   const { text, entities } = compose(
-    b(x("result_title")), tx("\n\n"),
-    i(x("result_input") + ":"), tx("\n"), bq(shownIdea, true), tx("\n\n"),
-    pre(prompt)
+    b(x("result_title")), tx("\n"),
+    i(meta), tx("\n\n"),
+    i("🎯 " + x("result_input") + ":"), tx("\n"), bq(shownIdea, true), tx("\n\n"),
+    b("📋 " + x("result_prompt") + ":"), tx("\n"),
+    qp(prompt), // the prompt itself: quote + mono, per the owner's spec
+    tx("\n\n"), i(x("result_hint"))
   );
   const keyboard = kb([
     [btn(x("btn_refine"), "res:refine"), btn(x("btn_new"), "nav:quick")],

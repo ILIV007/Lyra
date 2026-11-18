@@ -1,5 +1,48 @@
 # Changelog
 
+## v2.5.0 — 2026-11-18
+
+Owner live-review fixes + a full review/debug pass:
+
+- **Message lifecycle, per the owner's distinction.** Tapping Home on
+  a result card deleted the card itself — a bug. But menu screens are
+  not prompts and should not linger either. Final rules: DELIVERABLES
+  (result cards, bank items — tracked in a per-user `keep` registry)
+  are never deleted, only their keyboard is stripped when left behind;
+  MENUS and flow screens are deleted when left, so no dead screens
+  pile up. The placeholder is never deleted — it is edited into
+  chunk 1 of the card. Refine no longer edits the result card.
+- **4096, not 4000.** Long prompts were split into two messages below
+  Telegram's real limit; splitter, delivery and the placeholder path
+  now all use 4096, so borderline prompts stay in one message.
+- **Prompts render as quote + mono:** the crafted prompt carries
+  overlapping `expandable_blockquote` + `code` entities (probed live
+  against the Bot API first — accepted).
+- **More Rich:** the Mode screen and Bank items are rich messages now
+  (Home, Guide, Mode, Bank items rich; form-like screens stay
+  editable). Home sections are separated with a settings subheading.
+- **Detailed Prompt button on Home** — red (`danger` style), next to
+  Quick Prompt; it starts the 3-question flow directly, whatever the
+  Settings depth toggle says. New `btn_detail` string in 12 locales.
+- **Result card redesigned** (owner: "too simple"): rocket header in
+  all 12 locales, an italic meta line (mode bundle + prompt length),
+  labelled idea and prompt sections, and a copy tip footer — the
+  prompt block itself stays quote + mono.
+- **Quick-ask screens cleaned up:** the Detailed flow gets its own
+  header (it previously showed the identical Quick Prompt screen),
+  the duplicated leading emoji in the ask text is stripped, and the
+  settings line no longer stacks 🎛 on top of the bundle's own icon.
+- **The "Writing…" placeholder is alive:** its text rotates every
+  ~1.2s (Writing → Thinking → Cooking → Polishing, localised in all
+  12 languages) via edits to the real message — explicitly not a
+  draft/stream. The cycler always stops before the card edit lands,
+  so it can never overwrite the result.
+- Review pass: dead code removed from prompts.js; rich-send fallback
+  also strips the source keyboard; bot.js / i18n.js / index.js audited
+  clean.
+
+Agent: Rick
+
 ## v2.4.0 — 2026-11-18
 
 Owner live-review fixes, including the missing-prompt root cause:

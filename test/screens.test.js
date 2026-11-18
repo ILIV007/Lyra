@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { richHome, home, settings, settingsLine, modeScreen, resultCard, bankItem } from "../src/screens.js";
+import { richHome, home, settings, settingsLine, modeScreen, resultCard, bankItem, quickAsk, quickAskDetailed } from "../src/screens.js";
+import { splitMessage } from "../src/telegram.js";
 import { BANK } from "../src/styles.js";
 
 const user = {
@@ -14,15 +15,37 @@ test("rich home: no table, carries the one-line settings summary", () => {
   assert.ok(!html.includes("<table"), "home must not use a table");
   assert.ok(html.includes(settingsLine(user)));
   assert.ok(html.includes("<h3>"));
-  // Three rows: primary action / Mode+Bank / Settings+Guide.
-  assert.equal(keyboard.inline_keyboard.length, 3);
-  assert.equal(keyboard.inline_keyboard[1].length, 2);
+  assert.ok(html.includes("<h4>"), "settings section is separated by a subheading");
+  // Four rows: Quick / Detailed (danger) / Mode+Bank / Settings+Guide.
+  assert.equal(keyboard.inline_keyboard.length, 4);
+  const detail = keyboard.inline_keyboard[1][0];
+  assert.equal(detail.callback_data, "nav:detail");
+  assert.equal(detail.style, "danger");
 });
 
 test("plain home mirrors the rich one", () => {
   const s = home(user);
   assert.ok(s.text.includes(settingsLine(user)));
-  assert.equal(s.keyboard.inline_keyboard.length, 3);
+  assert.equal(s.keyboard.inline_keyboard.length, 4);
+});
+
+test("result card prompt is quote + mono (overlapping entities)", () => {
+  const prompt = "You are an expert. Do the thing.";
+  const card = resultCard(user, { idea: "idea", prompt });
+  const off = card.text.indexOf(prompt);
+  const types = card.entities.filter((e) => e.offset === off && e.length === prompt.length).map((e) => e.type);
+  assert.ok(types.includes("expandable_blockquote"), "prompt must be a quote");
+  assert.ok(types.includes("code"), "prompt must be mono");
+  // Designed card: meta line (mode + length) and the copy tip are present.
+  assert.ok(card.text.includes("📏"), "meta line shows prompt length");
+  assert.ok(card.text.includes("long-press"), "copy tip present");
+});
+
+test("a 4050-char card stays ONE message at the 4096 limit", () => {
+  const parts = splitMessage("x".repeat(4050), [], 4096);
+  assert.equal(parts.length, 1);
+  const two = splitMessage("x".repeat(5000), [], 4096);
+  assert.equal(two.length, 2);
 });
 
 test("settings screen: no platform picker, detail toggle + language only", () => {
@@ -54,6 +77,21 @@ test("no copy_text buttons on result card or bank items, even when long", () => 
     assert.ok(!JSON.stringify(item.keyboard).includes("copy_text"), preset.id);
     assert.ok(item.text.includes(preset.content.slice(0, 60)), preset.id);
   }
+});
+
+test("settings line: one emoji per fact, no stacked icons", () => {
+  const line = settingsLine(user);
+  assert.ok(!line.includes("🎛 ✨"), "mode icon must not stack on the bundle icon");
+  assert.ok(!line.includes("🎛 🐴"));
+});
+
+test("quick vs detailed ask screens have distinct headers, no duplicate emoji", () => {
+  const q = quickAsk(user);
+  const d = quickAskDetailed(user);
+  assert.ok(q.text.startsWith("✍️ Quick Prompt"));
+  assert.ok(d.text.startsWith("🔍 Detailed Prompt"));
+  assert.ok(!q.text.includes("✍️ Quick Prompt\n\n✍️"), "ask body must not repeat the header emoji");
+  assert.ok(!d.text.includes("🔍 Detailed Prompt\n\n✍️"));
 });
 
 test("bank has real ready-to-use presets, not only style meta-prompts", () => {

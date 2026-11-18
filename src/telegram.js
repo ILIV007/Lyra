@@ -42,14 +42,18 @@ export const bq = (text, expandable = false) => ({
 });
 export const spoiler = (text) => ({ text: String(text), type: "spoiler" });
 export const lnk = (text, url) => ({ text: String(text), type: "text_link", url });
+// Quote + mono in one: overlapping expandable_blockquote and code entities
+// on the same range — probed against the live Bot API, accepted (ok:true).
+export const qp = (text) => ({ text: String(text), types: ["expandable_blockquote", "code"] });
 
 export function compose(...segs) {
   let text = "";
   const entities = [];
   for (const s of segs.flat()) {
     if (!s || !s.text) continue;
-    if (s.type) {
-      const e = { type: s.type, offset: text.length, length: s.text.length };
+    const types = s.types || (s.type ? [s.type] : []);
+    for (const type of types) {
+      const e = { type, offset: text.length, length: s.text.length };
       if (s.url) e.url = s.url;
       if (s.language) e.language = s.language;
       entities.push(e);
