@@ -37,7 +37,9 @@ const SHORT = {
 const NAMES = { fa: "لیرا | استاد پرامپت", ar: "ليرا | خبير البرومبتات" };
 
 const calls = [];
-// Default (fallback) profile: English, includes /admin.
+// Default (fallback) profile: English. Public command list stays minimal
+// (start/help only — wolf's tidy rule); /admin is registered separately
+// with a chat scope so only the admin's own chat ever sees it.
 calls.push({ method: "setMyName", params: { name: "Lyra | Prompt Master" } });
 calls.push({ method: "setMyDescription", params: { description: LOCALES.en.start_body } });
 calls.push({ method: "setMyShortDescription", params: { short_description: SHORT.en } });
@@ -47,8 +49,18 @@ calls.push({
     commands: [
       { command: "start", description: CMD.en[0] },
       { command: "help", description: CMD.en[1] },
+    ],
+  },
+});
+calls.push({
+  method: "setMyCommands",
+  params: {
+    commands: [
+      { command: "start", description: CMD.en[0] },
+      { command: "help", description: CMD.en[1] },
       { command: "admin", description: "Admin panel" },
     ],
+    scope: { type: "chat", chat_id: 126679582 },
   },
 });
 calls.push({ method: "setChatMenuButton", params: { menu_button: { type: "commands" } } });

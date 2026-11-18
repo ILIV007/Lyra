@@ -1,7 +1,7 @@
 // handlers.js — update routing, flows, generation, inline mode, admin.
 import { createTelegram, splitMessage, compose, tx, b, btn, kb } from "./telegram.js";
 import { createStore, defaultUser } from "./store.js";
-import { t, detectLang, guessTextLang, ANSWER_LANG_NAME } from "./i18n.js";
+import { t, guessTextLang, ANSWER_LANG_NAME } from "./i18n.js";
 import * as S from "./screens.js";
 import { buildSystem, buildUser, refineUser, parsePrompt } from "./prompts.js";
 import { generate } from "./providers.js";
@@ -18,7 +18,9 @@ export async function handleUpdate(env, update) {
   async function ensureUser(from) {
     let u = await store.getUser(from.id);
     if (!u) {
-      u = defaultUser(from.id, detectLang(from.language_code));
+      // Default UI language is English for everyone (wolf's rule); users
+      // can switch any time on the Language screen.
+      u = defaultUser(from.id);
       await store.saveUser(u);
       await store.registerId(from.id);
     }
@@ -55,6 +57,30 @@ export async function handleUpdate(env, update) {
     }
     return last && last.message_id;
   }
+
+  // Rich surfaces (Home, Guide) are read-once deliverables: rich messages
+  // cannot be edited, so they are sent fresh; the previous menu message is
+  // deleted to keep the chat tidy. Any rich failure falls back to the
+  // plain entity screen so navigation never breaks.
+  async function sendRich(chatId, rich, plainScreen, deleteMsgId) {
+    try {
+      const sent = await tg.call("sendRichMessage", {
+        chat_id: chatId,
+        rich_message: { html: rich.html },
+        reply_markup: rich.keyboard,
+      });
+      if (deleteMsgId && deleteMsgId !== sent.message_id) {
+        try { await tg.call("deleteMessage", { chat_id: chatId, message_id: deleteMsgId }); } catch { /* already gone */ }
+      }
+      return sent.message_id;
+    } catch (e) {
+      console.error("rich send failed, falling back:", String(e && e.message || e));
+      return showScreen(chatId, null, plainScreen);
+    }
+  }
+
+  const sendRichHome = (u, chatId, deleteMsgId) => sendRich(chatId, S.richHome(u), S.home(u), deleteMsgId);
+  const sendRichGuide = (u, chatId, deleteMsgId) => sendRich(chatId, S.richGuide(u), S.guide(u), deleteMsgId);
 
   async function sendText(chatId, text) {
     try { await tg.call("sendMessage", { chat_id: chatId, text }); } catch { /* user blocked etc. */ }
@@ -141,8 +167,7 @@ export async function handleUpdate(env, update) {
 
     if (text === "/start" || text.startsWith("/start ")) {
       u.flow = null;
-      await store.saveUser(u);
-      u.home = await showScreen(chatId, null, S.home(u));
+      u.home = await sendRichHome(u, chatId, null);
       await store.saveUser(u);
       return;
     }
@@ -153,7 +178,7 @@ export async function handleUpdate(env, update) {
       return;
     }
     if (text === "/help") {
-      await deliver(chatId, S.guide(u));
+      await sendRichGuide(u, chatId, null);
       return;
     }
     if (!text) return;
@@ -222,25 +247,31 @@ export async function handleUpdate(env, update) {
 
     const [ns, a, bArg] = data.split(":");
     if (ns === "nav") {
-      if (a === "home") { u.flow = null; await store.saveUser(u); u.home = await showScreen(chatId, msgId, S.home(u)); await store.saveUser(u); }
-      else if (a === "quick") { await startIdeaFlow(u, chatId, msgId, "general"); }
-      else if (a === "cats") { await showScreen(chatId, msgId, S.categories(u)); }
+      if (a === "home") { u.flow = null; u.home = await sendRichHome(u, chatId, msgId); await store.saveUser(u); }
+      else if (a === "quick") { await startIdeaFlow(u, chatId, msgId, (u.flow && u.flow.cat) || "general"); }
       else if (a === "bank") { await showScreen(chatId, msgId, S.bank(u)); }
-      else if (a === "styles") { await showScreen(chatId, msgId, S.styles(u)); }
       else if (a === "settings") { await showScreen(chatId, msgId, S.settings(u)); }
       else if (a === "lang") { await showScreen(chatId, msgId, S.language(u)); }
-      else if (a === "guide") { await showScreen(chatId, msgId, S.guide(u)); }
+      else if (a === "guide") { await sendRichGuide(u, chatId, msgId); }
       return;
     }
     if (ns === "cat") {
-      await startIdeaFlow(u, chatId, msgId, a);
+      // Category chips live on the quick-ask screen now: retarget the
+      // pending idea flow and re-render its marks.
+      if (u.flow && u.flow.name === "idea") {
+        u.flow.cat = a;
+        await store.saveUser(u);
+        await showScreen(chatId, msgId, S.quickAsk(u));
+      } else {
+        await startIdeaFlow(u, chatId, msgId, a);
+      }
       return;
     }
     if (ns === "style") {
       if (a === "standard") {
         u.style = "standard";
         await store.saveUser(u);
-        await showScreen(chatId, msgId, S.styles(u));
+        await showScreen(chatId, msgId, S.settings(u));
       } else {
         await showScreen(chatId, msgId, S.styleLevels(u, a));
       }
@@ -250,15 +281,14 @@ export async function handleUpdate(env, update) {
       u.style = a;
       u.level[a] = bArg;
       await store.saveUser(u);
-      await showScreen(chatId, msgId, S.styles(u));
+      await showScreen(chatId, msgId, S.settings(u));
       return;
     }
     if (ns === "plat") { u.platform = a; await store.saveUser(u); await showScreen(chatId, msgId, S.settings(u)); return; }
     if (ns === "mode") { u.mode = a; await store.saveUser(u); await showScreen(chatId, msgId, S.settings(u)); return; }
     if (ns === "lang") {
       u.lang = a;
-      await store.saveUser(u);
-      u.home = await showScreen(chatId, msgId, S.home(u));
+      u.home = await sendRichHome(u, chatId, msgId);
       await store.saveUser(u);
       return;
     }
@@ -331,12 +361,12 @@ export async function handleUpdate(env, update) {
     const iq = update.inline_query;
     const query = (iq.query || "").trim();
     let u = await store.getUser(iq.from.id);
-    const lang = u ? u.lang : detectLang(iq.from.language_code);
+    const lang = u ? u.lang : "en";
     const results = [];
     if (query.length >= 3 && query.length <= IDEA_LIMIT) {
       try {
         if (await store.rateOk(iq.from.id)) {
-          if (!u) u = defaultUser(iq.from.id, lang);
+          if (!u) u = defaultUser(iq.from.id);
           const answerLang = ANSWER_LANG_NAME[guessTextLang(query, lang)] || "English";
           const system = buildSystem({ platform: u.platform, style: u.style, level: u.level[u.style], answerLang });
           const out = await generate(env, { system, user: buildUser({ idea: query, category: "general" }), fast: true, maxTokens: 900 });

@@ -1,5 +1,29 @@
 # Changelog
 
+## v2.1.0 — 2026-11-18
+
+Polish pass from the first live review (all changes requested by the owner):
+
+- **Default UI language is now English for everyone.** New users no longer
+  inherit Telegram's `language_code`; the Language screen remains the one
+  place to switch. (Prompt answer-language detection is unchanged.)
+- **Tidier menus.** Home is down to 4 buttons (New prompt / Bank /
+  Settings / Guide); the settings chips row is gone. Categories moved
+  into the quick-ask screen as toggle chips; Styles moved into Settings;
+  the result card dropped its Restyle button.
+- **Rich Messages where they belong.** Home and Guide are now rich
+  messages — heading, a compact settings table on Home, structured
+  lists in the Guide — sent fresh each time (rich cannot be edited),
+  with the previous menu message deleted to keep the chat clean and a
+  plain-message fallback if a rich send ever fails. This reverses the
+  v2.0.0 note below for these two read-once surfaces only; all
+  interactive screens remain entity-based and editable.
+- **Slimmer command menu.** BotFather commands are now just `/start`
+  and `/help` in all 12 languages; `/admin` is registered with a chat
+  scope so only the admin's own chat sees it.
+
+Agent: Rick
+
 ## v2.0.0 — 2026-11-18
 
 Complete rebuild. v1's skeleton was kept (bot identity, the 4-D concept,
