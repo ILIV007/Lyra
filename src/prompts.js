@@ -28,7 +28,6 @@ const PLATFORMS = {
   video: `Target platform: a video generator (Runway/Pika/Sora-style). The prompt must describe: the scene and subject, the motion (subject + camera movement), duration cues, style/cinematography, lighting and mood, and what must stay consistent across frames. One flowing descriptive prompt.`,
 };
 
-export const PLATFORM_KEYS = Object.keys(PLATFORMS);
 
 import { styleOverlay } from "./styles.js";
 
@@ -74,8 +73,6 @@ export function parsePrompt(raw) {
     .trim();
   return out.length >= 10 ? out : null;
 }
-
-export const QUESTION_KEYS = ["q1", "q2", "q3"];
 
 // Parses the model's OPTIONAL <QUESTIONS> block (post-generation Sharpen
 // offer). Strict and defensive by design: anything malformed returns

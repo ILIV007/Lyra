@@ -30,7 +30,6 @@ export const LANGS = [
   { code: "id", name: "Bahasa Indonesia", rtl: false },
 ];
 
-export const RTL = new Set(LANGS.filter((l) => l.rtl).map((l) => l.code));
 export const LANG_NAME = Object.fromEntries(LANGS.map((l) => [l.code, l.name]));
 
 // Map a Telegram language_code ("pt-BR", "en-US", "fa") to a supported UI

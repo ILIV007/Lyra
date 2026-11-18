@@ -3,7 +3,7 @@
 import { processUpdate } from "./bot.js";
 import { runHeartbeat } from "./handlers.js";
 
-const VERSION = "2.7.0";
+const VERSION = "2.7.1";
 
 export default {
   async fetch(request, env, ctx) {

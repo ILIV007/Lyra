@@ -17,3 +17,9 @@ id = "023b8dd9b02145ac8d6840d7e1ff8e7c"
 
 [vars]
 ADMIN_IDS = "126679582"
+
+# Daily trigger; the Worker itself gates the heartbeat broadcast to
+# one send per 15-day epoch (KV key hb:last). Managed on the live
+# Worker via the Schedules API — declared here for wrangler users.
+[triggers]
+crons = ["0 9 * * *"]
