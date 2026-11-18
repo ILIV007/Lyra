@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { richHome, home, settings, settingsLine, modeScreen, resultCard, bankItem } from "../src/screens.js";
+import { richHome, home, settings, settingsLine, modeScreen, resultCard, bankItem, quickAsk, quickAskDetailed } from "../src/screens.js";
 import { splitMessage } from "../src/telegram.js";
 import { BANK } from "../src/styles.js";
 
@@ -36,6 +36,9 @@ test("result card prompt is quote + mono (overlapping entities)", () => {
   const types = card.entities.filter((e) => e.offset === off && e.length === prompt.length).map((e) => e.type);
   assert.ok(types.includes("expandable_blockquote"), "prompt must be a quote");
   assert.ok(types.includes("code"), "prompt must be mono");
+  // Designed card: meta line (mode + length) and the copy tip are present.
+  assert.ok(card.text.includes("📏"), "meta line shows prompt length");
+  assert.ok(card.text.includes("long-press"), "copy tip present");
 });
 
 test("a 4050-char card stays ONE message at the 4096 limit", () => {
@@ -74,6 +77,21 @@ test("no copy_text buttons on result card or bank items, even when long", () => 
     assert.ok(!JSON.stringify(item.keyboard).includes("copy_text"), preset.id);
     assert.ok(item.text.includes(preset.content.slice(0, 60)), preset.id);
   }
+});
+
+test("settings line: one emoji per fact, no stacked icons", () => {
+  const line = settingsLine(user);
+  assert.ok(!line.includes("🎛 ✨"), "mode icon must not stack on the bundle icon");
+  assert.ok(!line.includes("🎛 🐴"));
+});
+
+test("quick vs detailed ask screens have distinct headers, no duplicate emoji", () => {
+  const q = quickAsk(user);
+  const d = quickAskDetailed(user);
+  assert.ok(q.text.startsWith("✍️ Quick Prompt"));
+  assert.ok(d.text.startsWith("🔍 Detailed Prompt"));
+  assert.ok(!q.text.includes("✍️ Quick Prompt\n\n✍️"), "ask body must not repeat the header emoji");
+  assert.ok(!d.text.includes("🔍 Detailed Prompt\n\n✍️"));
 });
 
 test("bank has real ready-to-use presets, not only style meta-prompts", () => {

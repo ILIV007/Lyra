@@ -34,8 +34,9 @@ function detailLabel(u) {
 }
 
 // One compact line summarising the current setup — Home, Mode, Settings.
+// One emoji per fact, no stacking (bundleLabel carries its own icon).
 export function settingsLine(u) {
-  return [`🌐 ${LANG_NAME[u.lang]}`, `🎛 ${bundleLabel(u)}`, detailLabel(u)].join("  ·  ");
+  return [`🌐 ${LANG_NAME[u.lang]}`, bundleLabel(u), detailLabel(u)].join("  ·  ");
 }
 
 // ---- rich surfaces ----------------------------------------------------------
@@ -89,13 +90,21 @@ export function home(u) {
 
 // ---- regular screens ----------------------------------------------------------
 
-export function quickAsk(u) {
+// Locale ask-strings open with their own emoji; the screen header already
+// carries one, so the body's leading emoji is stripped (no duplicates).
+const stripLeadEmoji = (s) => s.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, "");
+
+function askScreen(u, detailed) {
   const x = tr(u);
   const { text, entities } = compose(
-    b(x("btn_quick")), tx("\n\n"), tx(x("quick_ask")), tx("\n\n"), i(settingsLine(u))
+    b(detailed ? x("btn_detail") : x("btn_quick")), tx("\n\n"),
+    tx(stripLeadEmoji(x("quick_ask"))), tx("\n\n"), i(settingsLine(u))
   );
   return { text, entities, keyboard: kb([homeRow(u)]) };
 }
+
+export function quickAsk(u) { return askScreen(u, false); }
+export function quickAskDetailed(u) { return askScreen(u, true); }
 
 export function question(u, idx) {
   const x = tr(u);
@@ -212,10 +221,14 @@ export function guide(u) {
 export function resultCard(u, { idea, prompt }) {
   const x = tr(u);
   const shownIdea = idea.length > 500 ? idea.slice(0, 500) + "…" : idea;
+  const meta = `${bundleLabel(u)}  ·  📏 ${prompt.length.toLocaleString("en-US")}`;
   const { text, entities } = compose(
-    b(x("result_title")), tx("\n\n"),
-    i(x("result_input") + ":"), tx("\n"), bq(shownIdea, true), tx("\n\n"),
-    qp(prompt) // the prompt itself: quote + mono, per the owner's spec
+    b(x("result_title")), tx("\n"),
+    i(meta), tx("\n\n"),
+    i("🎯 " + x("result_input") + ":"), tx("\n"), bq(shownIdea, true), tx("\n\n"),
+    b("📋 " + x("result_prompt") + ":"), tx("\n"),
+    qp(prompt), // the prompt itself: quote + mono, per the owner's spec
+    tx("\n\n"), i(x("result_hint"))
   );
   const keyboard = kb([
     [btn(x("btn_refine"), "res:refine"), btn(x("btn_new"), "nav:quick")],

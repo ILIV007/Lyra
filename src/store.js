@@ -11,7 +11,8 @@ export function defaultUser(id, lang = "en") {
     platform: "chatgpt", // legacy (pre-v2.4) — no platform picker any more
     mode: "basic", // basic | detail (question depth)
     flow: null, // { name, answers?, lastIdea?, lastPrompt? }
-    flowMsg: null, // last flow/menu screen message id (cleaned up on generation)
+    flowMsg: null, // last flow/menu screen message id (deleted on generation)
+    keep: [], // deliverable message ids (result cards, bank items): never deleted
     home: null, // home message id (edited in place)
     n: 0, // prompts generated
     first: Date.now(),
