@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.7.1 — 2026-11-18
+
+- **Repo cleanup (no behaviour change):** 14 dead locale keys removed
+  in all 12 languages (v1/v2.0 leftovers plus the retired Refine/New
+  button strings), 4 dead exports removed (RTL, PLATFORM_KEYS,
+  QUESTION_KEYS, lnk). README refreshed to the v2.7 reality — it still
+  advertised copy buttons, language auto-detect, draft previews and
+  "current version v2.0.0". wrangler.toml now documents the cron
+  trigger; GitHub description and topics set.
+
 ## v2.7.0 — 2026-11-18
 
 - **One menu message, edited in place (owner's rule).** All

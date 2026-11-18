@@ -12,24 +12,35 @@ Built on the original Lyra 4-D methodology:
 
 ## Features
 
-- **4-D prompt engine** — full methodology, specialised by craft category (general / code / image / video)
-  (ChatGPT / Claude / Gemini / Code / Image / Video), restored and hardened
-  behind a strict `<PROMPT>` output contract.
-- **Two modes** — ⚡ Basic (instant) and 🔎 Detail (asks 3 clarifying
-  questions first).
-- **Styles** — ✨ Standard, 🐴 **Ponytail** (lite/full/ultra: the crafted
-  prompt makes the AI build the laziest solution that works) and 🪨
-  **Caveman** (standard/ultra: answer first, zero fluff, facts intact).
-- **Prompt Bank** — 12 copy-ready presets: Lyra Classic, Code Review Pro, Debug Detective, Socratic Tutor, Ponytail, Caveman and more
-- **One Mode picker** — `/mode` or the Mode button: Standard, Ponytail, Caveman, Code, Image or Video shapes every prompt
-  with a real one-tap Copy button. No AI call, zero cost.
+- **4-D prompt engine** — full methodology, specialised by craft category
+  (general / code / image / video) behind a strict `<PROMPT>` output
+  contract, with a multi-model fallback chain behind it.
+- **Two depths** — ⚡ Basic (instant) and 🔎 Detailed (asks 3 clarifying
+  questions first; the red Detailed button starts it directly).
+- **One Mode picker** — `/mode` or the Mode button: ✨ Standard,
+  🐴 **Ponytail** (lite/full/ultra: the crafted prompt makes the AI build
+  the laziest solution that works), 🪨 **Caveman** (standard/ultra:
+  answer first, zero fluff, facts intact), Code, Image or Video.
+- **Sharpen** — when a quick idea is vague, Lyra can offer up to 2
+  tap-to-answer follow-up questions on the result card, then regenerates
+  a sharper prompt from your answers.
+- **Prompt Bank** — ready-to-use presets (Lyra Classic, Code Review Pro,
+  Debug Detective, Socratic Tutor, Ponytail, Caveman and more), sent as
+  rich messages. No AI call, zero cost.
+- **Refine by reply** — reply to a result card with feedback and Lyra
+  regenerates the prompt with it. No buttons, no clutter.
 - **12 UI languages** — English, فارسی, Русский, Українська, العربية,
   Español, Português, Deutsch, Français, Türkçe, O'zbek, Bahasa Indonesia.
-  Auto-detected from Telegram, switchable any time; full RTL for fa/ar.
-- **Modern Telegram UX** — one-message edit-in-place navigation, ⚡ reaction
-  acknowledgements, draft previews, expandable quotes, semantic button
-  colours, chat menu button, and **inline mode**: `@Lyra_IVbot <idea>` in
-  any chat.
+  English by default, switchable any time; full RTL for fa/ar.
+- **Modern Telegram UX** — a single menu message edited in place (no
+  delete-and-resend churn), prompts delivered as copyable quote+mono
+  blocks that are never deleted, a live rotating "Writing… / Thinking… /
+  Cooking…" status while generating, rotating loading-screen tips, ⚡
+  reaction acknowledgements, semantic button colours, and **inline
+  mode**: `@Lyra_IVbot <idea>` in any chat.
+- **Heartbeat** — every 15 days each user gets one tiny "still alive"
+  message with a rotating tip (Worker cron, KV-gated; deliberately not
+  spam-shaped).
 - **Admin** — stats and a throttled, batched broadcast.
 
 ## Architecture
@@ -42,7 +53,7 @@ src/
                200, work in ctx.waitUntil) — no debug endpoints
   bot.js       update_id dedupe + stale-update age gate
   handlers.js  commands, callbacks, text flows, inline mode, admin
-  screens.js   13 screens as pure functions of user state
+  screens.js   every screen as a pure function of user state
   prompts.js   4-D engine: core × category × mode bundle × style
   styles.js    Ponytail/Caveman overlays + bank presets
   providers.js Workers AI (primary) → OpenRouter free chain (fallback)
@@ -69,7 +80,7 @@ via the dashboard/API and never live in the repo.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Current version: **v2.0.0**.
+See [CHANGELOG.md](CHANGELOG.md). Current version: **v2.7.1**.
 
 ## License
 

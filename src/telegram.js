@@ -41,7 +41,6 @@ export const bq = (text, expandable = false) => ({
   text: String(text), type: expandable ? "expandable_blockquote" : "blockquote",
 });
 export const spoiler = (text) => ({ text: String(text), type: "spoiler" });
-export const lnk = (text, url) => ({ text: String(text), type: "text_link", url });
 // Quote + mono in one: overlapping expandable_blockquote and code entities
 // on the same range — probed against the live Bot API, accepted (ok:true).
 export const qp = (text) => ({ text: String(text), types: ["expandable_blockquote", "code"] });
