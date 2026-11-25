@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.8.0 — 2026-11-25
+
+- **Forced join @ILIVIR3 (owner's order, same pattern as Votext).**
+  Every message, callback and inline query first checks channel
+  membership via getChatMember; non-members get one join screen
+  (channel URL button + an "I joined" recheck with an alert if still
+  not a member) in all 12 languages. The gate FAILS OPEN: until
+  @Lyra_IVbot is a channel admin, getChatMember errors and everyone
+  passes — the moment it becomes admin, the gate is live with no
+  further deploy. Admins are exempt.
+
 ## v2.7.1 — 2026-11-18
 
 - **Repo cleanup (no behaviour change):** 14 dead locale keys removed

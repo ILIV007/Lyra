@@ -8,7 +8,7 @@
 // 256 chars and rejects the WHOLE message otherwise (BUTTON_COPY_TEXT_
 // INVALID) — prompts and presets are far longer. The `pre` block is the
 // copy mechanism: clients render it with a native copy affordance.
-import { compose, tx, b, i, pre, bq, qp, btn, kb } from "./telegram.js";
+import { compose, tx, b, i, pre, bq, qp, btn, urlBtn, kb } from "./telegram.js";
 import { t, LANGS, LANG_NAME } from "./i18n.js";
 import { BANK, STYLE_LEVELS } from "./styles.js";
 
@@ -214,6 +214,20 @@ export function sharpenQuestion(u, f) {
   const rows = q.options.map((opt, i) => [btn(opt, `ans:${f.idx}:${i}`)]);
   rows.push([btn(x("btn_skip"), `ans:${f.idx}:skip`), btn(x("btn_cancel"), "ans:cancel")]);
   return { text, entities, keyboard: kb(rows) };
+}
+
+// Forced-join gate screen: shown to non-members of @ILIVIR3. The join
+// button is a plain URL; "I joined" re-checks membership (join:check).
+export function joinScreen(u) {
+  const x = tr(u);
+  const { text, entities } = compose(b(x("join_title")), tx("\n\n"), tx(x("join_body")));
+  return {
+    text, entities,
+    keyboard: kb([
+      [urlBtn(x("btn_join"), "https://t.me/ILIVIR3")],
+      [btn(x("btn_joined"), "join:check", { style: "success" })],
+    ]),
+  };
 }
 
 // The 15-day heartbeat: deliberately tiny and tidy — two short lines,

@@ -27,6 +27,21 @@ export async function handleUpdate(env, update) {
     return u;
   }
 
+  // Forced join: Lyra is for @ILIVIR3 members. The check FAILS OPEN —
+  // until the bot is a channel admin, getChatMember errors and everyone
+  // passes, so the bot never locks people out by accident. The moment
+  // the bot becomes admin, the gate is live with no further change.
+  const JOIN_CHAT = "@ILIVIR3";
+  async function isMember(userId) {
+    if (admins.includes(String(userId))) return true;
+    try {
+      const m = await tg.call("getChatMember", { chat_id: JOIN_CHAT, user_id: userId });
+      if (!m) return true;
+      if (m.status === "restricted") return !!m.is_member;
+      return m.status === "creator" || m.status === "administrator" || m.status === "member";
+    } catch { return true; }
+  }
+
   // MESSAGE LIFECYCLE (owner's rules, final form after his reviews):
   // - There is exactly ONE menu message per user (u.home). EVERY menu
   //   and flow screen (Home, Settings, Mode, Bank list, Guide, ask and
@@ -305,6 +320,14 @@ export async function handleUpdate(env, update) {
     const u = await ensureUser(msg.from);
     const text = (msg.text || "").trim();
 
+    if (!(await isMember(u.id))) {
+      u.flow = null;
+      u.flowMsg = null;
+      await showMenu(u, chatId, S.joinScreen(u), null);
+      await store.saveUser(u);
+      return;
+    }
+
     if (text === "/start" || text.startsWith("/start ")) {
       u.flow = null;
       u.flowMsg = null;
@@ -399,7 +422,23 @@ export async function handleUpdate(env, update) {
     const msgId = cq.message.message_id;
     const u = await ensureUser(cq.from);
     const data = cq.data || "";
+    if (data === "join:check") {
+      if (await isMember(u.id)) {
+        try { await tg.call("answerCallbackQuery", { callback_query_id: cq.id }); } catch { /* stale tap */ }
+        u.flow = null;
+        u.flowMsg = null;
+        await showMenu(u, chatId, S.home(u), msgId);
+        await store.saveUser(u);
+      } else {
+        try { await tg.call("answerCallbackQuery", { callback_query_id: cq.id, text: t(u.lang, "join_alert"), show_alert: true }); } catch { /* stale tap */ }
+      }
+      return;
+    }
     try { await tg.call("answerCallbackQuery", { callback_query_id: cq.id }); } catch { /* stale tap */ }
+    if (!(await isMember(u.id))) {
+      await showMenu(u, chatId, S.joinScreen(u), msgId);
+      return;
+    }
 
     const [ns, a, bArg] = data.split(":");
     if (ns === "nav") {
@@ -553,6 +592,17 @@ export async function handleUpdate(env, update) {
     let u = await store.getUser(iq.from.id);
     const lang = u ? u.lang : "en";
     const results = [];
+    if (!(await isMember(iq.from.id))) {
+      results.push({
+        type: "article",
+        id: "join",
+        title: t(lang, "join_title"),
+        description: t(lang, "join_body"),
+        input_message_content: { message_text: `${t(lang, "join_body")}\nhttps://t.me/ILIVIR3` },
+      });
+      try { await tg.call("answerInlineQuery", { inline_query_id: iq.id, results, cache_time: 30, is_personal: true }); } catch { /* expired query */ }
+      return;
+    }
     if (query.length >= 3 && query.length <= IDEA_LIMIT) {
       try {
         if (await store.rateOk(iq.from.id)) {

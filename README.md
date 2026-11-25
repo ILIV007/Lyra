@@ -80,7 +80,7 @@ via the dashboard/API and never live in the repo.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Current version: **v2.7.1**.
+See [CHANGELOG.md](CHANGELOG.md). Current version: **v2.8.0**.
 
 ## License
 

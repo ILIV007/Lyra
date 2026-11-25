@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { home, settings, settingsLine, modeScreen, resultCard, bankItem, quickAsk, quickAskDetailed, sharpenQuestion, heartbeat } from "../src/screens.js";
+import { home, settings, settingsLine, modeScreen, resultCard, bankItem, quickAsk, quickAskDetailed, sharpenQuestion, heartbeat, joinScreen } from "../src/screens.js";
 import { parseQuestions } from "../src/prompts.js";
 import { splitMessage } from "../src/telegram.js";
 import { BANK } from "../src/styles.js";
@@ -140,4 +140,13 @@ test("parseQuestions: strict, capped, defensive", () => {
   assert.equal(parseQuestions("<QUESTIONS>\nQ: Lonely?\n</QUESTIONS>"), null, "question without options → null");
   const many = "<QUESTIONS>\n" + "Q: A?\n- 1\n- 2\n".repeat(4) + "</QUESTIONS>";
   assert.equal(parseQuestions(many).length, 2, "capped at 2 questions");
+});
+
+test("join screen: channel URL button + recheck, no other actions", () => {
+  const s = joinScreen(user);
+  assert.ok(s.text.includes("@ILIVIR3"));
+  const rows = s.keyboard.inline_keyboard;
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0][0].url, "https://t.me/ILIVIR3");
+  assert.equal(rows[1][0].callback_data, "join:check");
 });
