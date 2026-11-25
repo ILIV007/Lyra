@@ -103,6 +103,7 @@ export function splitMessage(text, entities = [], limit = 4000) {
 
 // ---- keyboards ------------------------------------------------------------
 export const btn = (text, callback_data, extra = {}) => ({ text, callback_data, ...extra });
+export const urlBtn = (text, url) => ({ text, url });
 // No copy_text buttons: Telegram caps copy_text at 256 chars and rejects
 // the whole message past that (BUTTON_COPY_TEXT_INVALID). Prompts and
 // presets ship in `pre` blocks, which clients render copyable natively.
